@@ -118,3 +118,158 @@ const Rules_bd_1 = (props: KeyWithAnyModel, application: KeyWithAnyModel): KeyWi
 };
 
 export default Rules_bd_1;
+
+import { getUrl } from "../../utils/common/change.utils";
+import rulesUtils from "./rules.utils";
+import Rules_bd_1 from "./Rules_bd_1";
+
+jest.mock("../../utils/common/change.utils", () => ({
+  getUrl: {
+    getParameterByName: jest.fn(),
+    getStageInfo: jest.fn(),
+  },
+}));
+
+jest.mock("./rules.utils");
+
+describe("Rules_bd_1 Function", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should handle the iBanking scenario and set nonEditable and hidden fields correctly", () => {
+    // Arrange
+    const props = [
+      {
+        fields: [
+          { logical_field_name: "full_name" },
+          { logical_field_name: "email" },
+          { logical_field_name: "mobile_number" },
+        ],
+      },
+    ];
+    const application = { source_system_name: "1" };
+    const stageInfoMock = [
+      {
+        stageId: "bd-1",
+        stageInfo: {
+          applicants: { auth_mode_a_1: "IX" },
+        },
+      },
+    ];
+
+    const mockReturnValue = { processed: "result" };
+
+    getUrl.getParameterByName.mockReturnValueOnce(null).mockReturnValueOnce(null);
+    getUrl.getStageInfo.mockReturnValue(stageInfoMock);
+    rulesUtils.mockReturnValue(mockReturnValue);
+
+    // Act
+    const result = Rules_bd_1(props, application);
+
+    // Assert
+    expect(rulesUtils).toHaveBeenCalledWith(props, {
+      nonEditable: [
+        [
+          "full_name",
+          "email",
+          "mobile_number",
+          "account_currency_9",
+          "account_currency",
+          "contact_preference_casa",
+        ],
+      ],
+      hidden: [
+        ["account_currency_9", "account_currency", "contact_preference_casa"],
+      ],
+    });
+    expect(result).toEqual(mockReturnValue);
+  });
+
+  it("should handle the manual scenario and set hidden and nonEditable fields correctly", () => {
+    // Arrange
+    const props = [];
+    const application = { source_system_name: "1" };
+    const stageInfoMock = [
+      {
+        stageId: "bd-2",
+        stageInfo: {
+          applicants: {},
+        },
+      },
+    ];
+
+    const mockReturnValue = { processed: "manualResult" };
+
+    getUrl.getParameterByName.mockReturnValueOnce("manual");
+    getUrl.getStageInfo.mockReturnValue(stageInfoMock);
+    rulesUtils.mockReturnValue(mockReturnValue);
+
+    // Act
+    const result = Rules_bd_1(props, application);
+
+    // Assert
+    expect(rulesUtils).toHaveBeenCalledWith(props, {
+      nonEditable: [
+        [
+          "full_name",
+          "email",
+          "mobile_number",
+          "residential_status",
+          "account_currency_9",
+          "account_currency",
+          "residency_status",
+          "NRIC",
+          "passport_no",
+        ],
+      ],
+      hidden: [
+        [
+          "ownership_status",
+          "education_level",
+          "nationality",
+          "nationality_add",
+          "country_of_birth",
+          "contact_preference",
+          "other_name_or_alias",
+          "gender",
+          "marital_status",
+          "residential_address",
+          "see_other_myInfo_details",
+          "see_other_myInfo_details_consent",
+        ],
+      ],
+    });
+    expect(result).toEqual(mockReturnValue);
+  });
+
+  it("should handle default case and set minimal hidden fields", () => {
+    // Arrange
+    const props = [];
+    const application = { source_system_name: "1" };
+    const stageInfoMock = [
+      {
+        stageId: "bd-2",
+        stageInfo: {
+          applicants: {},
+        },
+      },
+    ];
+
+    const mockReturnValue = { processed: "defaultResult" };
+
+    getUrl.getParameterByName.mockReturnValueOnce(null);
+    getUrl.getStageInfo.mockReturnValue(stageInfoMock);
+    rulesUtils.mockReturnValue(mockReturnValue);
+
+    // Act
+    const result = Rules_bd_1(props, application);
+
+    // Assert
+    expect(rulesUtils).toHaveBeenCalledWith(props, {
+      nonEditable: [],
+      hidden: [["see_other_myInfo_details", "see_other_myInfo_details_consent"]],
+    });
+    expect(result).toEqual(mockReturnValue);
+  });
+});
