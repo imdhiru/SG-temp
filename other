@@ -243,3 +243,96 @@ export const getTotalStep = (flowType: any) => {
     DEFAULT_EDITABLE: ['name_of_employer', 'annual_income', 'email', 'mobile_number', 'marital_status']
   }
 };
+
+
+
+
+
+import { getTotalStep } from './getTotalStep';
+
+describe('getTotalStep Function', () => {
+    it('should return correct STAGE_NAMES structure', () => {
+        const result = getTotalStep('ibnk');
+        expect(result.STAGE_NAMES).toHaveProperty('SSF_1', 'ssf-1');
+        expect(result.STAGE_NAMES).toHaveProperty('RP', 'rp');
+        expect(result.STAGE_NAMES).toHaveProperty('FFD_1', 'ffd-1');
+    });
+
+    it('should return correct STATE_URLS structure', () => {
+        const result = getTotalStep('ibnk');
+        expect(result.STATE_URLS).toHaveProperty('SUPER_SHORT_FORM', 'sg/super-short-form');
+        expect(result.STATE_URLS).toHaveProperty('THANKYOU', 'sg/thankyou');
+        expect(result.STATE_URLS).toHaveProperty('CREDIT_LIMIT', 'sg/credit-limit');
+    });
+
+    it('should handle ETC_CASA flow type correctly', () => {
+        const result = getTotalStep('ibnk');
+        expect(result.ETC_CASA.totalStages).toBe('4');
+        expect(result.ETC_CASA.startCount).toBe('1');
+        expect(result.ETC_CASA['ssf-1']).toEqual({
+            step: '1',
+            path: 'super-short-form',
+            name: 'Basic Information',
+        });
+        expect(result.ETC_CASA['ad-1']).toEqual({
+            step: null,
+            path: 'tax-details',
+            name: 'Tax Details',
+        });
+    });
+
+    it('should handle NON_ETC_CASA flow type correctly', () => {
+        const result = getTotalStep('manual');
+        expect(result.NON_ETC_CASA.totalStages).toBe('6');
+        expect(result.NON_ETC_CASA.startCount).toBe('2');
+        expect(result.NON_ETC_CASA['bd-3']).toEqual({
+            step: null,
+            path: 'employment',
+            name: 'Employment Details',
+        });
+        expect(result.NON_ETC_CASA['rp']).toEqual({
+            step: null,
+            path: 'rp',
+            name: 'Terms and Conditions',
+        });
+    });
+
+    it('should handle ETC_CC flow type correctly', () => {
+        const result = getTotalStep('ibnk');
+        expect(result.ETC_CC.totalStages).toBe('4');
+        expect(result.ETC_CC.startCount).toBe('1');
+        expect(result.ETC_CC['ld-1']).toEqual({
+            step: null,
+            path: 'loan-calculator',
+            name: 'Loan Calculator',
+        });
+        expect(result.ETC_CC['ACD']).toEqual({
+            step: null,
+            path: 'trust-credit-limit-porting',
+            name: 'Trust Credit Limit Porting',
+        });
+    });
+
+    it('should handle NON_ETC_CC flow type correctly', () => {
+        const result = getTotalStep('manual');
+        expect(result.NON_ETC_CC.totalStages).toBe('5');
+        expect(result.NON_ETC_CC.startCount).toBe('1');
+        expect(result.NON_ETC_CC['ad-2']).toEqual({
+            step: null,
+            path: 'credit-card-details',
+            name: 'Credit Card Details',
+        });
+        expect(result.NON_ETC_CC['rp']).toEqual({
+            step: null,
+            path: 'rp',
+            name: 'Terms and Conditions',
+        });
+    });
+
+    it('should return the correct DEFAULT_EDITABLE fields', () => {
+        const result = getTotalStep('ibnk');
+        expect(result.DEFAULT_EDITABLE).toContain('name_of_employer');
+        expect(result.DEFAULT_EDITABLE).toContain('email');
+        expect(result.DEFAULT_EDITABLE).toContain('mobile_number');
+    });
+});
