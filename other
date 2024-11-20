@@ -31,3 +31,59 @@ const Title = (stage : string, journeyType : string | null, productCategory : st
 }
  
 export default Title;
+
+
+// Title.test.js
+import Title from './Title';
+
+describe('Title function', () => {
+  test('returns correct title for stage "ssf-1"', () => {
+    expect(Title('ssf-1', null, '')).toBe("Great! let's get started");
+  });
+
+  test('returns correct title for stage "ssf-2"', () => {
+    expect(Title('ssf-2', null, '')).toBe("Great! let's get started");
+  });
+
+  test('returns correct title for stage "bd-3" with ETC journeyType and CC productCategory', () => {
+    expect(Title('bd-3', 'ETC', 'CC')).toBe('Please update or provide the required details');
+  });
+
+  test('returns correct title for stage "bd-3" with ETC journeyType and non-CC/PL productCategory', () => {
+    expect(Title('bd-3', 'ETC', 'HL')).toBe('Tell us more about your employment details');
+  });
+
+  test('returns correct title for stage "bd-2"', () => {
+    expect(Title('bd-2', null, '')).toBe('Tell us more about yourself');
+  });
+
+  test('returns correct title for stage "ad-1"', () => {
+    expect(Title('ad-1', null, '')).toBe('Please provide your tax information details');
+  });
+
+  test('returns correct title for stage "ad-2"', () => {
+    expect(Title('ad-2', null, '')).toBe('Please update or provide the required details');
+  });
+
+  test('returns correct title for stage "ACD"', () => {
+    expect(Title('ACD', null, '')).toBe('Please select your preferred credit card limit');
+  });
+
+  test('returns correct title for stage "doc"', () => {
+    expect(Title('doc', null, '')).toBe('Documents Upload');
+  });
+
+  test('returns correct title for stage "bd-1"', () => {
+    expect(Title('bd-1', null, '')).toBe("Great! let's get started");
+  });
+
+  test('returns correct title for stage "rp"', () => {
+    expect(Title('rp', null, '')).toBe('Lastly, please read and submit your application');
+  });
+
+  test('returns default title for unknown stage', () => {
+    expect(Title('unknown', null, '')).toBe('Please update or provide the required details');
+  });
+});
+
+
