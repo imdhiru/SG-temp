@@ -330,3 +330,194 @@ export const getTokenChno = () => {
     channelRefNo: channelRefNo
   }
 }
+
+
+
+
+
+import { isFieldUpdate } from './path-to-your-file';
+
+describe('isFieldUpdate', () => {
+  it('should dispatch the correct action on field update', () => {
+    const mockDispatch = jest.fn();
+    const mockHandleFieldDispatch = jest.fn();
+    const props = {
+      handleFieldDispatch: mockHandleFieldDispatch,
+    };
+
+    const fieldName = 'testField';
+    const fieldValue = 'testValue';
+
+    isFieldUpdate(props, fieldValue, fieldName)(mockDispatch);
+
+    expect(mockHandleFieldDispatch).toHaveBeenCalledWith(fieldName, fieldValue);
+  });
+});
+
+
+
+
+import { isFieldValueUpdate } from './path-to-your-file';
+import { ValueUpdateAction } from '../store/value-update-slice';
+
+jest.mock('../store/value-update-slice', () => ({
+  ValueUpdateAction: {
+    getChangeUpdate: jest.fn(),
+  },
+}));
+
+describe('isFieldValueUpdate', () => {
+  it('should dispatch ValueUpdateAction if fieldValue is updated', () => {
+    const mockDispatch = jest.fn();
+    const props = { data: { logical_field_name: 'field1' } };
+    const stageSelector = [
+      { stageInfo: { applicants: { field1_a_1: 'oldValue' } }, stageId: '123' },
+    ];
+    const fieldValue = 'newValue';
+
+    isFieldValueUpdate(props, stageSelector, fieldValue)(mockDispatch);
+
+    expect(ValueUpdateAction.getChangeUpdate).toHaveBeenCalledWith({
+      id: '123',
+      changes: true,
+    });
+    expect(mockDispatch).toHaveBeenCalled();
+  });
+});
+
+import { fieldError } from './path-to-your-file';
+
+describe('fieldError', () => {
+  it('should return true if field error exists', () => {
+    const fieldErrorSelector = { logical_field_name: true };
+    const props = { data: { logical_field_name: 'logical_field_name' } };
+
+    const result = fieldError(fieldErrorSelector, props);
+
+    expect(result).toBe(true);
+  });
+
+  it('should return undefined if no field error exists', () => {
+    const fieldErrorSelector = {};
+    const props = { data: { logical_field_name: 'logical_field_name' } };
+
+    const result = fieldError(fieldErrorSelector, props);
+
+    expect(result).toBeUndefined();
+  });
+});
+
+import { getDeviceType } from './path-to-your-file';
+
+describe('getDeviceType', () => {
+  it('should return "Mobile Website" for mobile user agents', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      value: 'iPhone',
+      configurable: true,
+    });
+
+    expect(getDeviceType()).toBe('Mobile Website');
+  });
+
+  it('should return "Desktop Website" for desktop user agents', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      configurable: true,
+    });
+
+    expect(getDeviceType()).toBe('Desktop Website');
+  });
+});
+
+
+import { smoothScroll } from './path-to-your-file';
+
+describe('smoothScroll', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div class="app__body">
+        <div class="header"></div>
+        <div class="error-msg"></div>
+      </div>
+    `;
+  });
+
+  it('should scroll to the first error message', () => {
+    const scrollMock = jest.fn();
+    Element.prototype.scroll = scrollMock;
+
+    smoothScroll();
+
+    setTimeout(() => {
+      expect(scrollMock).toHaveBeenCalled();
+    }, 100);
+  });
+});
+
+import { filterDisableFields } from './path-to-your-file';
+
+describe('filterDisableFields', () => {
+  it('should filter out missing fields', () => {
+    const formConfigValues = [
+      { logical_field_name: 'field1' },
+      { logical_field_name: 'field2' },
+    ];
+    const myInfoData = ['field2'];
+    const defaultEditable = ['field3'];
+
+    const result = filterDisableFields(formConfigValues, myInfoData, defaultEditable);
+
+    expect(result).toEqual(['field1']);
+  });
+});
+
+
+
+import { getUrl } from './path-to-your-file';
+import { store } from '../store/store';
+
+jest.mock('../store/store', () => ({
+  store: {
+    getState: jest.fn(),
+  },
+}));
+
+describe('getUrl', () => {
+  it('should return the correct query parameter value', () => {
+    store.getState.mockReturnValue({
+      urlParam: {
+        urlParams: 'param1=value1&param2=value2',
+      },
+    });
+
+    const result = getUrl.getParameterByName('param1');
+
+    expect(result).toBe('value1');
+  });
+
+  it('should return products from state', () => {
+    store.getState.mockReturnValue({
+      urlParam: {
+        products: [{ name: 'Product 1' }],
+      },
+    });
+
+    const result = getUrl.getProductInfo();
+
+    expect(result).toEqual([{ name: 'Product 1' }]);
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
