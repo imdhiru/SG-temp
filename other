@@ -512,7 +512,127 @@ describe('getUrl', () => {
 
 
 
+import { FindIndex, getStoredOTP, getCurrentYear, authenticateType, fieldIdAppend, filterDisableFields, isMyinfoField, getDeviceType, removeStageIds, keyToken, findKeyTokenIndex, getTokenChno } from '../your-file-name'; // Update with correct path
+import configureStore from 'redux-mock-store';
 
+const mockStore = configureStore();
+const store = mockStore({
+  otp: '123456',
+  urlParam: {
+    urlParams: '?auth=myinfo&isMyInfoVirtual=true',
+    channelRefNo: { channelRefNo: 'REF123' },
+  },
+  stages: {
+    stages: [{ stageInfo: { applicants: { auth_mode_a_1: 'XM' } } }],
+  },
+});
+
+describe('Utility Function Tests', () => {
+  beforeEach(() => {
+    store.clearActions();
+  });
+
+  test('FindIndex should return correct index', () => {
+    const stageInfo = {
+      fieldmetadata: {
+        data: {
+          stages: [{ stageId: 'stage-1' }, { stageId: 'stage-2' }],
+        },
+      },
+    };
+    const result = FindIndex(stageInfo, 'STAGE-1');
+    expect(result).toBe(0);
+  });
+
+  test('getStoredOTP should return OTP from store', () => {
+    expect(getStoredOTP()).toBe('123456');
+  });
+
+  test('getCurrentYear should return the current year', () => {
+    const currentYear = new Date().getFullYear();
+    expect(getCurrentYear()).toBe(currentYear);
+  });
+
+  test('authenticateType should return "myinfo" for specific parameters', () => {
+    jest.spyOn(URLSearchParams.prototype, 'get').mockImplementation((param) => {
+      if (param === 'auth') return 'myinfo';
+      if (param === 'isMyInfoVirtual') return 'true';
+      return null;
+    });
+
+    expect(authenticateType()).toBe('myinfo');
+  });
+
+  test('fieldIdAppend should append "_a_1" to field name', () => {
+    const props = { data: { logical_field_name: 'field1' } };
+    expect(fieldIdAppend(props)).toBe('field1_a_1');
+  });
+
+  test('filterDisableFields should return non-missing fields', () => {
+    const formConfigValues = [{ logical_field_name: 'email' }, { logical_field_name: 'name' }];
+    const myInfoData = ['email'];
+    const result = filterDisableFields(formConfigValues, myInfoData);
+    expect(result).toEqual(['name']);
+  });
+
+  test('isMyinfoField should return true for valid field', () => {
+    const myInfoResponseSelector = { email_a_1: 'test@test.com' };
+    expect(isMyinfoField(myInfoResponseSelector, 'email')).toBe(true);
+  });
+
+  test('getDeviceType should identify mobile devices', () => {
+    const mockUserAgent = jest.spyOn(window.navigator, 'userAgent', 'get');
+    mockUserAgent.mockReturnValue('iPhone');
+    expect(getDeviceType()).toBe('Mobile Website');
+
+    mockUserAgent.mockReturnValue('Windows');
+    expect(getDeviceType()).toBe('Desktop Website');
+  });
+
+  test('removeStageIds should modify sequence correctly', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { auth_mode_a_1: 'XN', credit_limit_consent_a_1: 'N' },
+            products: [{ product_category: 'PL' }],
+            applicant_documents: [],
+          },
+        },
+      ],
+    };
+    const result = removeStageIds(stageSelector);
+    expect(result).toEqual(['ld-1', 'bd-2', 'bd-3', 'rp']);
+  });
+
+  test('keyToken should return correct token', () => {
+    const mockTokens = {
+      keys: [
+        {
+          label: 'testLabel',
+          value: [{ alg: 'RS256' }, { alg: 'ES256' }],
+        },
+      ],
+    };
+    jest.spyOn(getUrl, 'getTokens').mockReturnValue(mockTokens);
+    const result = keyToken('testLabel');
+    expect(result).toEqual([{ alg: 'ES256' }]);
+  });
+
+  test('findKeyTokenIndex should find correct index', () => {
+    const tokens = { keys: [{ label: 'label1' }, { label: 'label2' }] };
+    expect(findKeyTokenIndex(tokens, 'label2')).toBe(1);
+  });
+
+  test('getTokenChno should return correct channel reference number', () => {
+    jest.spyOn(URLSearchParams.prototype, 'get').mockImplementation((param) => {
+      if (param === 'code') return 'CODE123';
+      return null;
+    });
+    const result = getTokenChno();
+    expect(result).toEqual({ code: 'CODE123', channelRefNo: 'REF123' });
+  });
+});
 
 
 
