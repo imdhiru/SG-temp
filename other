@@ -81,3 +81,117 @@ export const removeStageIds = (stageSelector:any) => {
   }
   return default_seq;
 }
+import { removeStageIds } from './yourModulePath';
+
+describe('removeStageIds', () => {
+  const defaultSeq = ['ld-1', 'bd-2', 'bd-3', 'doc', 'ad-1', 'ad-2', 'ACD', 'rp'];
+
+  it('should return the default sequence when stageSelector is null or undefined', () => {
+    expect(removeStageIds(null)).toEqual(defaultSeq);
+    expect(removeStageIds(undefined)).toEqual(defaultSeq);
+  });
+
+  it('should remove "bd-2" if auth_mode_a_1 is not "XN"', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { auth_mode_a_1: 'YN' },
+            products: [{ product_category: 'PL' }],
+            applicant_documents: [{}],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'bd-2')
+    );
+  });
+
+  it('should remove "ld-1" if product_category is not "PL"', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { auth_mode_a_1: 'XN' },
+            products: [{ product_category: 'CA' }],
+            applicant_documents: [{}],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'ld-1')
+    );
+  });
+
+  it('should remove "doc" if applicant_documents is not provided or empty', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { auth_mode_a_1: 'XN' },
+            products: [{ product_category: 'PL' }],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'doc')
+    );
+  });
+
+  it('should remove "ad-2" if credit_limit_consent_a_1 is "Y"', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { credit_limit_consent_a_1: 'Y' },
+            products: [{ product_category: 'PL' }],
+            applicant_documents: [{}],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'ad-2')
+    );
+  });
+
+  it('should remove "ACD" and "ad-1" if product_category is neither "CA" nor "SA"', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: { auth_mode_a_1: 'XN' },
+            products: [{ product_category: 'PL' }],
+            applicant_documents: [{}],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'ACD' && id !== 'ad-1')
+    );
+  });
+
+  it('should apply multiple conditions correctly', () => {
+    const stageSelector = {
+      stages: [
+        {
+          stageInfo: {
+            applicants: {
+              auth_mode_a_1: 'YN',
+              credit_limit_consent_a_1: 'Y',
+            },
+            products: [{ product_category: 'CA' }],
+            applicant_documents: [],
+          },
+        },
+      ],
+    };
+    expect(removeStageIds(stageSelector)).toEqual(
+      defaultSeq.filter((id) => id !== 'bd-2' && id !== 'doc' && id !== 'ad-2')
+    );
+  });
+});
