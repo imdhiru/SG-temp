@@ -17,7 +17,7 @@ const tax = createSlice({
                         state.count = action.payload;
                 },
                 removeTaxField(state, action) {
-                        Iif (state.count > 0) {
+                        if (state.count > 0) {
                                 state.count = --state.count;
                                 let findIndex = state.fields.findIndex(
                                         (field: string) => field === action.payload
@@ -26,7 +26,7 @@ const tax = createSlice({
                         }
                 },
                 updateTax(state, action) {
-                        Eif (action.payload) {
+                        if (action.payload) {
                                 let count = 0;
                                 let i = 1;
                                 while (i < 5) {
