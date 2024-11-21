@@ -1,3 +1,124 @@
+import { generateSHA256Encrypt, injectStore } from './path-to-file';
+import defaultInterceptor from './path-to-file';
+import { sha256 } from "js-sha256";
+import axios from "axios";
+
+// Mocking Axios
+jest.mock("axios");
+
+describe("generateSHA256Encrypt", () => {
+  let scClientContextHeaders: any;
+  let request: any;
+  let sessionUid: string;
+
+  beforeEach(() => {
+    scClientContextHeaders = {
+      Channel: "MOBILE",
+      Authorization: "",
+    };
+    sessionUid = "test-session-uid";
+    request = { data: { mobileNo: "1234567890", flowType: "login", applnRefNo: "12345" } };
+  });
+
+  it("should set SHA256 encryption for generate endpoint", () => {
+    const urlEndPoint = "generate";
+    generateSHA256Encrypt(request, sessionUid, urlEndPoint, scClientContextHeaders);
+    expect(scClientContextHeaders["generate_otp"]).toBe(
+      sha256(`undefined1234567890login12345`)
+    );
+  });
+
+  it("should set SHA256 encryption for verify endpoint", () => {
+    const urlEndPoint = "verify";
+    const verifyData = {
+      data: {
+        "enc-otp": "encrypted-otp",
+        "flow-type": "login",
+        "key-index": "key-1",
+        "mobile-no": "1234567890",
+        "otp-sn": "otp-sn",
+        "user-id": "user-id",
+      },
+    };
+    generateSHA256Encrypt(verifyData, sessionUid, urlEndPoint, scClientContextHeaders);
+    expect(scClientContextHeaders["verify_otp"]).toBe(
+      sha256(`undefinedencrypted-otploginkey-11234567890otp-snuser-id`)
+    );
+  });
+
+  it("should remove unused headers for verify endpoint", () => {
+    const urlEndPoint = "verify";
+    generateSHA256Encrypt(request, sessionUid, urlEndPoint, scClientContextHeaders);
+    expect(scClientContextHeaders["generate_otp"]).toBeUndefined();
+    expect(scClientContextHeaders["application"]).toBeUndefined();
+    expect(scClientContextHeaders["applicants"]).toBeUndefined();
+  });
+});
+
+describe("defaultInterceptor", () => {
+  const mockStore = {
+    getState: jest.fn().mockReturnValue({
+      auth: {
+        sessionUid: "test-session-uid",
+      },
+    }),
+  };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    injectStore(mockStore);
+  });
+
+  it("should set SC-CLIENT-CONTEXT and headers in request", async () => {
+    defaultInterceptor();
+
+    const mockedRequest = jest.fn().mockResolvedValue({ data: "Success" });
+    (axios.interceptors.request.use as jest.Mock).mockImplementationOnce((config) => {
+      mockedRequest(config);
+      return config;
+    });
+
+    const endpoint = "http://example.com/customer";
+    await axios.get(endpoint);
+
+    expect(mockedRequest).toHaveBeenCalled();
+    const requestConfig = mockedRequest.mock.calls[0][0];
+
+    const headers = JSON.parse(requestConfig.headers["SC-CLIENT-CONTEXT"]);
+    expect(headers.Channel).toBe("MOBILE");
+    expect(headers.sessionUID).toBe("test-session-uid");
+  });
+
+  it("should abort requests after timeout", async () => {
+    jest.useFakeTimers();
+
+    const abortSpy = jest.fn();
+    const mockSignal = { abort: abortSpy };
+    global.AbortController = jest.fn().mockImplementation(() => mockSignal);
+
+    defaultInterceptor();
+
+    const mockedRequest = jest.fn().mockResolvedValue({ data: "Success" });
+    (axios.interceptors.request.use as jest.Mock).mockImplementationOnce((config) => {
+      setTimeout(() => config.signal?.abort(), 180000);
+      mockedRequest(config);
+      return config;
+    });
+
+    const endpoint = "http://example.com/delayed";
+    await axios.get(endpoint).catch((error) => error);
+
+    jest.advanceTimersByTime(180000);
+
+    expect(abortSpy).toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
+});
+
+
+
+
 
 import axios from "axios";
 import { sha256 } from "js-sha256";
