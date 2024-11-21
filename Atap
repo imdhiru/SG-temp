@@ -1,3 +1,87 @@
+
+import axios from "axios";
+import { thankYouPage } from "./path-to-your-function-file";
+
+jest.mock("axios");
+
+describe("thankYouPage function", () => {
+  const mockDispatch = jest.fn();
+  const mockBaseUrl = "http://example.com";
+  const mockFulfillmentData = "/fulfillmentData";
+
+  beforeAll(() => {
+    // Set up mock environment variables
+    process.env.REACT_APP_RTOB_BASE_URL = mockBaseUrl;
+    process.env.REACT_APP_RTOB_FULFILMENT_DATA = mockFulfillmentData;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should successfully send data and resolve with response", async () => {
+    const mockResponse = { data: { success: true } };
+    const stagePayloadData = { key: "value" };
+    const channelReference = "12345";
+
+    // Mock axios response
+    (axios.request as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+    const result = await thankYouPage(stagePayloadData, channelReference, mockDispatch);
+
+    // Assertions
+    expect(mockDispatch).toHaveBeenCalledWith(true); // Loader on
+    expect(axios.request).toHaveBeenCalledWith({
+      method: "POST",
+      url: `${mockBaseUrl}/applications/12345${mockFulfillmentData}`,
+      data: stagePayloadData,
+    });
+    expect(mockDispatch).toHaveBeenCalledWith(false); // Loader off
+    expect(result).toEqual(mockResponse.data);
+  });
+
+  it("should handle rejection and return the error if it is not 'Rejected'", async () => {
+    const mockError = { message: "Network Error" };
+    const stagePayloadData = { key: "value" };
+    const channelReference = "12345";
+
+    // Mock axios rejection
+    (axios.request as jest.Mock).mockRejectedValueOnce(mockError);
+
+    await expect(thankYouPage(stagePayloadData, channelReference, mockDispatch)).rejects.toEqual(mockError);
+
+    // Assertions
+    expect(mockDispatch).toHaveBeenCalledWith(true); // Loader on
+    expect(mockDispatch).toHaveBeenCalledWith(false); // Loader off
+  });
+
+  it("should not reject if the error is 'Rejected'", async () => {
+    const mockError = "Rejected";
+    const stagePayloadData = { key: "value" };
+    const channelReference = "12345";
+
+    // Mock axios rejection with specific error
+    (axios.request as jest.Mock).mockRejectedValueOnce(mockError);
+
+    const result = await thankYouPage(stagePayloadData, channelReference, mockDispatch);
+
+    // Assertions
+    expect(mockDispatch).toHaveBeenCalledWith(true); // Loader on
+    expect(mockDispatch).toHaveBeenCalledWith(false); // Loader off
+    expect(result).toBeUndefined(); // No rejection for "Rejected"
+  });
+});
+
+
+
+
+
+
+
+
+
+
+¡_________
 import { createSlice } from "@reduxjs/toolkit";
 import { StageSliceModel} from "../model/common-model"; 
 
