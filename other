@@ -195,3 +195,113 @@ describe('removeStageIds', () => {
     );
   });
 });
+
+
+
+
+
+import { getErrorType, getUserType, getStepName, loginval } from "./yourModule"; // Replace with actual file path
+import { getUrl, getDeviceType } from "../common/change.utils";
+import { checkProductDetails } from "../../services/common-service";
+import { CONSTANTS } from "../common/constants";
+
+jest.mock("../common/change.utils", () => ({
+  getUrl: {
+    getParameterByName: jest.fn(),
+    getUpdatedStage: jest.fn()
+  },
+  getDeviceType: jest.fn()
+}));
+
+jest.mock("../../services/common-service", () => ({
+  checkProductDetails: jest.fn()
+}));
+
+jest.mock("../common/constants", () => ({
+  CONSTANTS: {
+    NON_ETC_CASA: {
+      "stage1": { name: "Stage 1 - CASA" },
+      "stage2": { name: "Stage 2 - CASA" }
+    },
+    NON_ETC_CC: {
+      "stage1": { name: "Stage 1 - Credit Card" },
+      "stage2": { name: "Stage 2 - Credit Card" }
+    }
+  }
+}));
+
+describe("Utility functions", () => {
+  describe("getErrorType", () => {
+    it("should return the correct error message based on the error type", () => {
+      expect(getErrorType("STOP")).toBe("Save and Next");
+      expect(getErrorType("CONTINUE")).toBe("Try Again");
+      expect(getErrorType("RESUBMIT")).toBe("Review");
+      expect(getErrorType("UNKNOWN")).toBeUndefined();
+      expect(getErrorType("")).toBe("na");
+    });
+  });
+
+  describe("getUserType", () => {
+    it("should return the correct user type description", () => {
+      expect(getUserType("ntb")).toBe("New to Bank");
+      expect(getUserType("etb")).toBe("Existing to Bank");
+      expect(getUserType("unknown")).toBeUndefined();
+      expect(getUserType("mdd")).toBe("Multiple dedupe");
+    });
+  });
+
+  describe("getStepName", () => {
+    const mockStage = {
+      stages: {
+        stages: [
+          {
+            stageId: "stage1",
+            stageInfo: {
+              products: {}
+            }
+          }
+        ]
+      }
+    };
+
+    it("should return the step name for NON_ETC_CASA if product details exist", () => {
+      (checkProductDetails as jest.Mock).mockReturnValue(true);
+      expect(getStepName(mockStage)).toBe("Stage 1 - CASA");
+    });
+
+    it("should return the step name for NON_ETC_CC if product details do not exist", () => {
+      (checkProductDetails as jest.Mock).mockReturnValue(false);
+      expect(getStepName(mockStage)).toBe("Stage 1 - Credit Card");
+    });
+
+    it("should return 'thank you' for stageId 'ffd-1'", () => {
+      const mockStageWithFfd = { ...mockStage, stages: { stages: [{ stageId: "ffd-1" }] } };
+      expect(getStepName(mockStageWithFfd)).toBe("thank you");
+    });
+
+    it("should return 'na' if stageId does not match any criteria", () => {
+      const mockStageWithUnknownId = { ...mockStage, stages: { stages: [{ stageId: "unknown" }] } };
+      expect(getStepName(mockStageWithUnknownId)).toBe("na");
+    });
+  });
+
+  describe("loginval", () => {
+    it("should return 'Ibanking' for valid SSCode and non-Mobile Website", () => {
+      (getUrl.getParameterByName as jest.Mock).mockReturnValue("123");
+      (getDeviceType as jest.Mock).mockReturnValue("Desktop");
+      expect(loginval()).toBe("Ibanking");
+    });
+
+    it("should return 'SC Mobile' for valid SSCode and Mobile Website", () => {
+      (getUrl.getParameterByName as jest.Mock).mockReturnValue("123");
+      (getDeviceType as jest.Mock).mockReturnValue("Mobile Website");
+      expect(loginval()).toBe("SC Mobile");
+    });
+
+    it("should return 'RTOB' if no valid SSCode or token exists", () => {
+      (getUrl.getParameterByName as jest.Mock).mockReturnValue(null);
+      expect(loginval()).toBe("RTOB");
+    });
+  });
+});
+
