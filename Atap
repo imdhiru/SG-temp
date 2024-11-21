@@ -1,0 +1,47 @@
+import { createSlice } from "@reduxjs/toolkit";
+import {taxStoreModel} from '../model/common-model'
+const initialState: taxStoreModel = {
+        maxCount: 5,
+        count: 0,
+        fields: []
+};
+ 
+const tax = createSlice({
+        name: "tax",
+        initialState,
+        reducers: {
+                addTaxFiled(state, action) {
+                        state.fields.push(action.payload);
+                },
+                updateCount(state, action) {
+                        state.count = action.payload;
+                },
+                removeTaxField(state, action) {
+                        Iif (state.count > 0) {
+                                state.count = --state.count;
+                                let findIndex = state.fields.findIndex(
+                                        (field: string) => field === action.payload
+                                );
+                                state.fields.splice(findIndex, 2);
+                        }
+                },
+                updateTax(state, action) {
+                        Eif (action.payload) {
+                                let count = 0;
+                                let i = 1;
+                                while (i < 5) {
+                                        const CountyTaxValue = action.payload[`country_of_tax_residence_${i}_a_1`];
+                                        if (CountyTaxValue) {
+                                                count++;
+                                                state.fields.push(`country_of_tax_residence_${i}`);
+                                                state.fields.push(`tax_id_no_${i}`);
+                                        } 
+                                        i++;
+                                }
+                                state.count = count;
+                        }
+                }
+        }
+});
+export const taxAction = tax.actions;
+export default tax;
