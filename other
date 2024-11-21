@@ -1,307 +1,395 @@
-import { getUrl, getDeviceType } from "../common/change.utils";
-import { KeyWithAnyModel } from "../model/common-model";
-import { CONSTANTS } from "../common/constants";
-import { checkProductDetails } from "../../services/common-service";
+
  
-export const getErrorType = (errorType: string) => {
-    let errorTypeList : KeyWithAnyModel = {
-        '': 'na',
-        'STOP': 'Save and Next',
-        'CONTINUE': 'Try Again',
-        'RESUBMIT': 'Review',
-        'CORRECT': 'Review',
-        'LOGIN': 'Continue to Login',
-        'ROSHAN_CONTINUE': 'Ok, Continue'
-    }
-    return errorTypeList[errorType];
- }
  
-export const getUserType = (userType: string) => {
-   let userTypeLIst : KeyWithAnyModel = {
-    'ntb' : 'New to Bank',
-    'etb' : 'Existing to Bank',
-    'etc' : 'Existing to cards or casa',
-    'ntc' : 'New to cards or casa',
-    'ecc' : 'Existing to credit cards applying for bundle',
-    'c01' : 'Non resident of SG',
-    'eca' : 'Existing to casa applying for bundle',
-    'mdd' : 'Multiple dedupe'
-   }
-   return userTypeLIst[userType];
-}
  
-export const getStepName = (stage: KeyWithAnyModel) => {
-    const productsSelector =  stage.stages.stages[0].stageInfo.products;
-    const steps: KeyWithAnyModel = checkProductDetails(productsSelector) ? CONSTANTS.NON_ETC_CASA : CONSTANTS.NON_ETC_CC;
-    if (steps[stage.stages.stages[0].stageId]) {
-        return steps[stage.stages.stages[0].stageId].name;
-    } else if (stage.stages.stages[0].stageId === 'ffd-1') {
-        return 'thank you'
-    } else {
-        return 'na';
-    }
-}
  
-export const loginval = () => {
-    const isIbanking = getUrl.getParameterByName("SSCode") || getUrl.getParameterByName('transfer-token') || getUrl.getUpdatedStage().ccplChannel =="IBK" || getUrl.getUpdatedStage().ccplChannel =="MBNK";
-    
-    if (isIbanking != null && getDeviceType() !== 'Mobile Website') {
-        return 'Ibanking';
-    }
-    else if (isIbanking != null && getDeviceType() === 'Mobile Website') {
-        return 'SC Mobile';
-    }
-    else {
-        return 'RTOB';
-    }
-}
-
-
-export const removeStageIds = (stageSelector:any) => {
-  let default_seq = ['ld-1','bd-2','bd-3','doc','ad-1','ad-2','ACD','rp'];
-  Eif(stageSelector &&
-    stageSelector.stages &&
-    stageSelector.stages.length > 0) {
-    Iif(stageSelector.stages[0].stageInfo.applicants['auth_mode_a_1'] !== 'XN') {
-      default_seq.splice(default_seq.indexOf('bd-2'), 1);
-    }
-    Iif(stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'PL') {
-      default_seq.splice(default_seq.indexOf('ld-1'), 1);
-    }
-    Eif(!(stageSelector.stages[0].stageInfo.applicant_documents && stageSelector.stages[0].stageInfo.applicant_documents.length > 0)) {
-      default_seq.splice(default_seq.indexOf('doc'), 1);
-    }
-    Iif(stageSelector.stages[0].stageInfo.applicants['credit_limit_consent_a_1'] === 'Y') {
-      default_seq.splice(default_seq.indexOf('ad-2'), 1);
-    }
-    Eif(stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'CA' && stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'SA') {
-      default_seq.splice(default_seq.indexOf('ACD'), 1);
-      default_seq.splice(default_seq.indexOf('ad-1'), 1);
-    }
-  }
-  return default_seq;
-}
-import { removeStageIds } from './yourModulePath';
-
-describe('removeStageIds', () => {
-  const defaultSeq = ['ld-1', 'bd-2', 'bd-3', 'doc', 'ad-1', 'ad-2', 'ACD', 'rp'];
-
-  it('should return the default sequence when stageSelector is null or undefined', () => {
-    expect(removeStageIds(null)).toEqual(defaultSeq);
-    expect(removeStageIds(undefined)).toEqual(defaultSeq);
-  });
-
-  it('should remove "bd-2" if auth_mode_a_1 is not "XN"', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: { auth_mode_a_1: 'YN' },
-            products: [{ product_category: 'PL' }],
-            applicant_documents: [{}],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'bd-2')
-    );
-  });
-
-  it('should remove "ld-1" if product_category is not "PL"', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: { auth_mode_a_1: 'XN' },
-            products: [{ product_category: 'CA' }],
-            applicant_documents: [{}],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'ld-1')
-    );
-  });
-
-  it('should remove "doc" if applicant_documents is not provided or empty', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: { auth_mode_a_1: 'XN' },
-            products: [{ product_category: 'PL' }],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'doc')
-    );
-  });
-
-  it('should remove "ad-2" if credit_limit_consent_a_1 is "Y"', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: { credit_limit_consent_a_1: 'Y' },
-            products: [{ product_category: 'PL' }],
-            applicant_documents: [{}],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'ad-2')
-    );
-  });
-
-  it('should remove "ACD" and "ad-1" if product_category is neither "CA" nor "SA"', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: { auth_mode_a_1: 'XN' },
-            products: [{ product_category: 'PL' }],
-            applicant_documents: [{}],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'ACD' && id !== 'ad-1')
-    );
-  });
-
-  it('should apply multiple conditions correctly', () => {
-    const stageSelector = {
-      stages: [
-        {
-          stageInfo: {
-            applicants: {
-              auth_mode_a_1: 'YN',
-              credit_limit_consent_a_1: 'Y',
-            },
-            products: [{ product_category: 'CA' }],
-            applicant_documents: [],
-          },
-        },
-      ],
-    };
-    expect(removeStageIds(stageSelector)).toEqual(
-      defaultSeq.filter((id) => id !== 'bd-2' && id !== 'doc' && id !== 'ad-2')
-    );
-  });
-});
-
-
-
-
-
-import { getErrorType, getUserType, getStepName, loginval } from "./yourModule"; // Replace with actual file path
-import { getUrl, getDeviceType } from "../common/change.utils";
-import { checkProductDetails } from "../../services/common-service";
-import { CONSTANTS } from "../common/constants";
-
-jest.mock("../common/change.utils", () => ({
-  getUrl: {
-    getParameterByName: jest.fn(),
-    getUpdatedStage: jest.fn()
-  },
-  getDeviceType: jest.fn()
-}));
-
-jest.mock("../../services/common-service", () => ({
-  checkProductDetails: jest.fn()
-}));
-
-jest.mock("../common/constants", () => ({
-  CONSTANTS: {
-    NON_ETC_CASA: {
-      "stage1": { name: "Stage 1 - CASA" },
-      "stage2": { name: "Stage 2 - CASA" }
-    },
-    NON_ETC_CC: {
-      "stage1": { name: "Stage 1 - Credit Card" },
-      "stage2": { name: "Stage 2 - Credit Card" }
-    }
-  }
-}));
-
-describe("Utility functions", () => {
-  describe("getErrorType", () => {
-    it("should return the correct error message based on the error type", () => {
-      expect(getErrorType("STOP")).toBe("Save and Next");
-      expect(getErrorType("CONTINUE")).toBe("Try Again");
-      expect(getErrorType("RESUBMIT")).toBe("Review");
-      expect(getErrorType("UNKNOWN")).toBeUndefined();
-      expect(getErrorType("")).toBe("na");
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 	
+import axios from "axios";
+import { sha256 } from "js-sha256";
+ 
+import submitService from "../services/submit-service";
+import { getTokenChno, getUrl, keyToken } from "../utils/common/change.utils";
+ 
+let store: any;
+ 
+export const injectStore = (_store: any) => {
+  store = _store;
+};
+ 
+export const generateSHA256Encrypt = (
+  request: any,
+  sessionUid: string,
+  urlEndPoint: any,
+  scClientContextHeaders: any
+) => {
+  const xrtob:any = process.env.REACT_APP_XRTOB;
+  const appRef = getUrl.getChannelRefNo().applicationRefNo;
+  let xrtobWithRefNo = xrtob;
+ 
+  let defaultValue = xrtob + sessionUid;
+  if (urlEndPoint === "resume") {
+    defaultValue += appRef;
+  } else if (urlEndPoint === "authorize" && getUrl.getParameterByName("products")) {
+    const product = JSON.parse(JSON.stringify(getUrl.getProductInfo()));
+    product.filter((item: any) => {
+      delete item.product_description;
+      delete item.company_category;
+      delete item.product_category_name;
+      return item;
     });
-  });
-
-  describe("getUserType", () => {
-    it("should return the correct user type description", () => {
-      expect(getUserType("ntb")).toBe("New to Bank");
-      expect(getUserType("etb")).toBe("Existing to Bank");
-      expect(getUserType("unknown")).toBeUndefined();
-      expect(getUserType("mdd")).toBe("Multiple dedupe");
+    let productInfo = "";
+    product.forEach((data: any) => {
+      const objKeys = Object.keys(data).sort();
+      objKeys.forEach((item: any) => {
+        productInfo += data[item];
+      });
     });
+    scClientContextHeaders["products"] = sha256(xrtob + productInfo);
+  } else if (urlEndPoint === "customer") {
+    const data = getTokenChno();
+    scClientContextHeaders['tokenKeys'] = sha256(xrtob + keyToken('authorize-keys'));
+    scClientContextHeaders['personKeys'] = sha256(xrtob + keyToken('myinfo-keys'));
+ 
+    defaultValue += data.channelRefNo + data.code;
+  } else if (urlEndPoint === "create") {
+    defaultValue += getUrl.getChannelRefNo().channelRefNo;
+  } else if (
+    urlEndPoint === "personal" ||
+    urlEndPoint === "apply" ||
+    urlEndPoint === "ngr-offer" ||
+    urlEndPoint === "confirm" ||
+    urlEndPoint === "preserve" ||
+    urlEndPoint === "activate"
+  ) {
+    defaultValue += `${getUrl.getChannelRefNo().channelRefNo}${
+      getUrl.getChannelRefNo().applicationRefNo
+    }`;
+  } else if(urlEndPoint === 'generate') {
+    defaultValue += request.data.mobileNo + request.data.flowType + request.data.applnRefNo;
+    scClientContextHeaders["generate_otp"] = sha256(xrtob + request.data.mobileNo + request.data.flowType + request.data.applnRefNo);
+  } else if(urlEndPoint === 'verify') {
+    defaultValue += request.data['enc-otp'] + request.data['flow-type'] + request.data['key-index'] + request.data['mobile-no'] + request.data['otp-sn'] + request.data['user-id'];
+    scClientContextHeaders["verify_otp"] = sha256(xrtob + request.data['enc-otp'] + request.data['flow-type'] + request.data['key-index'] + request.data['mobile-no'] + request.data['otp-sn'] + request.data['user-id']);
+  }
+  const getToken = getUrl.getParameterByName("SSCode") || getUrl.getParameterByName('transfer-token');
+  if (getToken) {
+    defaultValue += submitService.generateUUID + getToken
+  }
+  if (urlEndPoint === "preserve") {
+    const stage = request.data.application.stage;
+    let stages = "";
+    stages += stage.page_id + stage.stage_id;
+    scClientContextHeaders["stage"] = sha256(
+      xrtobWithRefNo + appRef + getTokenChno().channelRefNo + extractValue(stages)
+    );
+  } else {
+    delete scClientContextHeaders["stage"];
+  }
+  if (urlEndPoint !== 'generate' && urlEndPoint !== 'verify' && request.data && request.data.application) {
+    const application = JSON.parse(JSON.stringify(request.data.application));
+    delete application.stage;
+    scClientContextHeaders["application"] = sha256(
+      xrtob + extractValue(application)
+    );
+  }
+ 
+  if (urlEndPoint !== 'generate' && urlEndPoint !== 'verify' && request.data && request.data.applicant) {
+    if (appRef) {
+      xrtobWithRefNo += appRef;
+    }
+    scClientContextHeaders["applicants"] = sha256(
+      xrtobWithRefNo + getTokenChno().channelRefNo + extractValue(request.data.applicant)
+    );
+  }
+  scClientContextHeaders["authorization"] = sha256(defaultValue);
+  if(urlEndPoint === 'generate' || urlEndPoint === 'verify') {
+    delete scClientContextHeaders["application"];
+    delete scClientContextHeaders["applicants"];
+    if(urlEndPoint === 'generate')
+    {
+      delete scClientContextHeaders["verify_otp"];
+    }
+    else if(urlEndPoint === 'verify') {
+      delete scClientContextHeaders["generate_otp"];
+    }
+  } else {
+    delete scClientContextHeaders["generate_otp"];
+    delete scClientContextHeaders["verify_otp"];
+  }
+};
+/** This method used to extract the values from payload list */
+const extractValue = (data: any) => {
+  let productInfo: string = "";
+  const objKeys = Object.keys(data).sort();
+  objKeys.forEach((item: any) => {
+    productInfo += data[item];
   });
-
-  describe("getStepName", () => {
-    const mockStage = {
-      stages: {
-        stages: [
-          {
-            stageId: "stage1",
-            stageInfo: {
-              products: {}
-            }
-          }
-        ]
+  return productInfo;
+};
+ 
+const defaultInterceptor = () => {
+  let scClientContextHeaders: any = {
+    Channel: "MOBILE",
+    Country: "SG",
+    Language: "EN",
+    AppName: "RCWB",
+    ClientId: "MOBILE",
+    InstanceCode: "CB_SG",
+    RumDevice: "devicebrowserversion",
+    Source: "sc.com",
+    DeviceType: "Desktop",
+    AgentType: "DESKTOP_BROWSER",
+    BrowserAgent: "DESKTOP-BROWSER",
+    IPAddress: "",
+  };
+  
+  let abortController = new AbortController();
+  const timeout = setTimeout(() => {
+    abortController.abort();
+  }, 180000);
+ 
+  axios.interceptors.request.use(
+    (request) => {
+      let currentEndpoint: any = request.url && request.url.split("/");
+      let uUid = submitService.generateUUID;
+      let header: any = {
+        "Content-Type": "application/json;charset=UTF-8",
+      };
+      if (process.env.REACT_APP_ENVIRONMENT === "uat") {
+        header["Env"] = process.env.REACT_APP_ENVIRONMENT; 
       }
-    };
-
-    it("should return the step name for NON_ETC_CASA if product details exist", () => {
-      (checkProductDetails as jest.Mock).mockReturnValue(true);
-      expect(getStepName(mockStage)).toBe("Stage 1 - CASA");
-    });
-
-    it("should return the step name for NON_ETC_CC if product details do not exist", () => {
-      (checkProductDetails as jest.Mock).mockReturnValue(false);
-      expect(getStepName(mockStage)).toBe("Stage 1 - Credit Card");
-    });
-
-    it("should return 'thank you' for stageId 'ffd-1'", () => {
-      const mockStageWithFfd = { ...mockStage, stages: { stages: [{ stageId: "ffd-1" }] } };
-      expect(getStepName(mockStageWithFfd)).toBe("thank you");
-    });
-
-    it("should return 'na' if stageId does not match any criteria", () => {
-      const mockStageWithUnknownId = { ...mockStage, stages: { stages: [{ stageId: "unknown" }] } };
-      expect(getStepName(mockStageWithUnknownId)).toBe("na");
-    });
+      scClientContextHeaders["reqId"] = uUid;
+      if (store.getState().auth.sessionUid !== null) {
+        const sessionUid = store.getState().auth.sessionUid;
+        const urlEndPoint = currentEndpoint[currentEndpoint.length - 1];
+        generateSHA256Encrypt(
+          request,
+          sessionUid,
+          urlEndPoint,
+          scClientContextHeaders
+        );
+        scClientContextHeaders["sessionUID"] = sessionUid;
+      }
+      if (currentEndpoint[currentEndpoint.length - 1] === "customer") {
+        header["requestId"] = uUid;
+ 
+        if(getUrl.getParameterByName("isMyInfoVirtualNRIC")) {
+          header["virtual"] = "YES";
+        }
+      }
+      if (currentEndpoint[currentEndpoint.length - 2] === "ibank") {
+        const tokenLabel = getUrl.getParameterByName('transfer-token') ? 'transfer-token' : 'code';
+        header[tokenLabel] = getUrl.getParameterByName("SSCode") || getUrl.getParameterByName('transfer-token');
+      }
+      request.headers["SC-CLIENT-CONTEXT"] = JSON.stringify(
+        scClientContextHeaders
+      );
+ 
+      request.headers.set(header);
+ 
+      return {
+        ...request,
+        signal: abortController.signal,
+      };
+    }
+  );
+ 
+  axios.interceptors.response.use((res) => {
+    clearTimeout(timeout);
+    return res;
   });
-
-  describe("loginval", () => {
-    it("should return 'Ibanking' for valid SSCode and non-Mobile Website", () => {
-      (getUrl.getParameterByName as jest.Mock).mockReturnValue("123");
-      (getDeviceType as jest.Mock).mockReturnValue("Desktop");
-      expect(loginval()).toBe("Ibanking");
-    });
-
-    it("should return 'SC Mobile' for valid SSCode and Mobile Website", () => {
-      (getUrl.getParameterByName as jest.Mock).mockReturnValue("123");
-      (getDeviceType as jest.Mock).mockReturnValue("Mobile Website");
-      expect(loginval()).toBe("SC Mobile");
-    });
-
-    it("should return 'RTOB' if no valid SSCode or token exists", () => {
-      (getUrl.getParameterByName as jest.Mock).mockReturnValue(null);
-      expect(loginval()).toBe("RTOB");
-    });
-  });
-});
-
+};
+ 
+export default defaultInterceptor;
