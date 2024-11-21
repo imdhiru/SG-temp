@@ -45,3 +45,81 @@ const tax = createSlice({
 });
 export const taxAction = tax.actions;
 export default tax;
+
+
+import taxReducer, { taxAction } from "./taxSlice";
+
+describe("taxSlice reducer", () => {
+  const initialState = {
+    maxCount: 5,
+    count: 0,
+    fields: [],
+  };
+
+  it("should handle initial state", () => {
+    expect(taxReducer(undefined, { type: undefined })).toEqual(initialState);
+  });
+
+  it("should handle addTaxField action", () => {
+    const payload = "field1";
+    const action = taxAction.addTaxFiled(payload);
+
+    const updatedState = taxReducer(initialState, action);
+
+    expect(updatedState.fields).toHaveLength(1);
+    expect(updatedState.fields[0]).toEqual(payload);
+  });
+
+  it("should handle updateCount action", () => {
+    const payload = 3;
+    const action = taxAction.updateCount(payload);
+
+    const updatedState = taxReducer(initialState, action);
+
+    expect(updatedState.count).toEqual(payload);
+  });
+
+  it("should handle removeTaxField action", () => {
+    const initialStateWithFields = {
+      maxCount: 5,
+      count: 2,
+      fields: ["field1", "field2", "field3"],
+    };
+
+    const payload = "field2";
+    const action = taxAction.removeTaxField(payload);
+
+    const updatedState = taxReducer(initialStateWithFields, action);
+
+    expect(updatedState.count).toEqual(1);
+    expect(updatedState.fields).toEqual(["field1"]);
+  });
+
+  it("should handle updateTax action with valid payload", () => {
+    const payload = {
+      country_of_tax_residence_1_a_1: "US",
+      country_of_tax_residence_2_a_1: "UK",
+    };
+    const action = taxAction.updateTax(payload);
+
+    const updatedState = taxReducer(initialState, action);
+
+    expect(updatedState.count).toEqual(2);
+    expect(updatedState.fields).toEqual([
+      "country_of_tax_residence_1",
+      "tax_id_no_1",
+      "country_of_tax_residence_2",
+      "tax_id_no_2",
+    ]);
+  });
+
+  it("should handle updateTax action with empty payload", () => {
+    const payload = {};
+    const action = taxAction.updateTax(payload);
+
+    const updatedState = taxReducer(initialState, action);
+
+    expect(updatedState.count).toEqual(0);
+    expect(updatedState.fields).toEqual([]);
+  });
+});
