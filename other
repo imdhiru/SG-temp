@@ -55,3 +55,29 @@ export const loginval = () => {
         return 'RTOB';
     }
 }
+
+
+export const removeStageIds = (stageSelector:any) => {
+  let default_seq = ['ld-1','bd-2','bd-3','doc','ad-1','ad-2','ACD','rp'];
+  Eif(stageSelector &&
+    stageSelector.stages &&
+    stageSelector.stages.length > 0) {
+    Iif(stageSelector.stages[0].stageInfo.applicants['auth_mode_a_1'] !== 'XN') {
+      default_seq.splice(default_seq.indexOf('bd-2'), 1);
+    }
+    Iif(stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'PL') {
+      default_seq.splice(default_seq.indexOf('ld-1'), 1);
+    }
+    Eif(!(stageSelector.stages[0].stageInfo.applicant_documents && stageSelector.stages[0].stageInfo.applicant_documents.length > 0)) {
+      default_seq.splice(default_seq.indexOf('doc'), 1);
+    }
+    Iif(stageSelector.stages[0].stageInfo.applicants['credit_limit_consent_a_1'] === 'Y') {
+      default_seq.splice(default_seq.indexOf('ad-2'), 1);
+    }
+    Eif(stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'CA' && stageSelector.stages[0].stageInfo.products[0]['product_category'] !== 'SA') {
+      default_seq.splice(default_seq.indexOf('ACD'), 1);
+      default_seq.splice(default_seq.indexOf('ad-1'), 1);
+    }
+  }
+  return default_seq;
+}
