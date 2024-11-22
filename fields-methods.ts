@@ -210,5 +210,75 @@ describe("removeUserInput", () => {
   });
 });
 
+import { deleteConditionalFieldSelector } from './path-to-your-function';
 
+describe('deleteConditionalFieldSelector', () => {
+  it('should delete specified keys from updateUserInputs when removedFields is not empty', async () => {
+    // Mock inputs
+    const updateUserInputs = {
+      name: 'John',
+      age: 30,
+      country: 'USA',
+    };
+
+    const conditionalFieldSelector = {
+      removedFields: {
+        age: true,
+        country: true,
+      },
+    };
+
+    // Call the function
+    const result = await deleteConditionalFieldSelector(
+      updateUserInputs,
+      conditionalFieldSelector
+    )();
+
+    // Expected output
+    expect(result).toEqual({ name: 'John' });
+  });
+
+  it('should return updateUserInputs as is when removedFields is empty', async () => {
+    // Mock inputs
+    const updateUserInputs = {
+      name: 'John',
+      age: 30,
+      country: 'USA',
+    };
+
+    const conditionalFieldSelector = {
+      removedFields: {},
+    };
+
+    // Call the function
+    const result = await deleteConditionalFieldSelector(
+      updateUserInputs,
+      conditionalFieldSelector
+    )();
+
+    // Expected output
+    expect(result).toEqual(updateUserInputs);
+  });
+
+  it('should not throw an error when updateUserInputs is empty', async () => {
+    // Mock inputs
+    const updateUserInputs = {};
+
+    const conditionalFieldSelector = {
+      removedFields: {
+        age: true,
+        country: true,
+      },
+    };
+
+    // Call the function
+    const result = await deleteConditionalFieldSelector(
+      updateUserInputs,
+      conditionalFieldSelector
+    )();
+
+    // Expected output
+    expect(result).toEqual({});
+  });
+});
 
