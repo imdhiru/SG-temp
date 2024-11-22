@@ -290,3 +290,124 @@ class service {
 const validateService = new service();
 
 export default validateService;
+
+
+
+
+import validateService from './service';
+
+describe('Service Class', () => {
+  describe('allowOnlyCharacter', () => {
+    let event: any;
+
+    beforeEach(() => {
+      event = {
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+        target: { value: '' },
+        key: ''
+      };
+    });
+
+    it('should allow only numbers for "mobile_number"', () => {
+      event.key = '5';
+      validateService.allowOnlyCharacter(event, 'mobile_number');
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('should prevent non-numeric characters for "mobile_number"', () => {
+      event.key = 'a';
+      validateService.allowOnlyCharacter(event, 'mobile_number');
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it('should allow alphanumeric for "referral_id_2"', () => {
+      event.key = 'A';
+      validateService.allowOnlyCharacter(event, 'referral_id_2');
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('should prevent invalid input for "referral_id_2"', () => {
+      event.key = '@';
+      validateService.allowOnlyCharacter(event, 'referral_id_2');
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+  });
+
+  describe('isValidNRIC', () => {
+    it('should return false for invalid NRIC length', () => {
+      expect(validateService.isValidNRIC('S123')).toBe(false);
+    });
+
+    it('should return true for valid NRIC', () => {
+      expect(validateService.isValidNRIC('S1234567D')).toBe(true); // Replace with valid NRIC for your implementation
+    });
+
+    it('should return false for invalid NRIC checksum', () => {
+      expect(validateService.isValidNRIC('S1234567X')).toBe(false);
+    });
+  });
+
+  describe('isValidDate', () => {
+    it('should return false for invalid date format', () => {
+      expect(validateService.isValidDate('2023-13-01')).toBe(false);
+    });
+
+    it('should return true for valid date format', () => {
+      expect(validateService.isValidDate('2023-11-22')).toBe(true);
+    });
+  });
+
+  describe('calculateAge', () => {
+    it('should calculate age correctly', () => {
+      const today = new Date();
+      const birthDate = new Date(today.getFullYear() - 25, today.getMonth(), today.getDate());
+      expect(validateService.calculateAge(birthDate.toISOString().split('T')[0])).toBe(25);
+    });
+
+    it('should return 0 for empty date', () => {
+      expect(validateService.calculateAge('')).toBe(0);
+    });
+  });
+
+  describe('validateAge', () => {
+    it('should validate age correctly for product type', () => {
+      expect(validateService.validateAge(17, '310', 'CA')).toBe(true);
+      expect(validateService.validateAge(19, '310', 'CA')).toBe(false);
+    });
+  });
+
+  describe('getValidationMsg', () => {
+    it('should return correct validation message for product type', () => {
+      expect(validateService.getValidationMsg('310', 'CA')).toBe('should not be less than 18 years');
+      expect(validateService.getValidationMsg('504', 'CA')).toBe('should not be less than 21 years');
+    });
+  });
+
+  describe('formateCurrency', () => {
+    it('should format currency without decimals', () => {
+      expect(validateService.formateCurrency('12345')).toBe('12,345');
+    });
+
+    it('should format currency with decimals', () => {
+      expect(validateService.formateCurrency('12345', true)).toBe('12,345.00');
+    });
+  });
+
+  describe('getEIR', () => {
+    it('should return correct EIR value', () => {
+      const journey = 'ETC';
+      const staff = 'Y';
+      const roi = '5';
+      const tenor = '12';
+      expect(validateService.getEIR(journey, staff, roi, tenor)).toBeDefined();
+    });
+  });
+
+  describe('getExcelRate', () => {
+    it('should calculate correct rate', () => {
+      const rate = validateService.getExcelRate(12, 100, 1000, 0, 0);
+      expect(rate).toBeCloseTo(-0.0833, 4);
+    });
+  });
+});
