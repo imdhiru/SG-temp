@@ -1119,7 +1119,10 @@ export const lovRequests = (
         else if(isBdStage === "ad-2" && authenticateType()== "manual"){
           currentStage= ['ad'];
         }
-        else if(isBdStage === "ssf-1" || "bd-2" || "bd-3" && authenticateType()== "manual"|| authenticateType()== "myinfo"){
+        else if(isBdStage === "ad-2" && authenticateType()== "myinfo"){
+          currentStage= ['ad'];
+        }
+        else if(isBdStage === "ssf-1" || isBdStage === "bd-2" || isBdStage === "bd-3" && authenticateType()== "manual"|| authenticateType()== "myinfo"){
           currentStage= ['bd'];
         }
         else{
@@ -1885,12 +1888,13 @@ export const submitBasicDataMyInfo = async (
   return await axios
     .request(options)
     .then((response: any) => {
+      dispatch(dispatchLoader(true));
       if(response !== "Rejected"){
         dispatch(urlParamAction.productDetails(response?.data?.products));
         dispatch(formConfig('manual',response.data))
-        dispatch(dispatchLoader(false));
         fetch(rtobproUrl)
         fetch(rtobdetUrl);
+        dispatch(dispatchLoader(false));
         return Promise.resolve(response.data);
       } else {
         defaultError();
@@ -1950,7 +1954,7 @@ export const creditToTrust = async (
       if(err !== "Rejected"){return Promise.reject(err)};
     });
 }
-export const submitBasicData3 = async (
+export const submitBasicDataDocument = async (
   basicResponse:any,
   channelReference: any,
   dispatch: AppDispatch
