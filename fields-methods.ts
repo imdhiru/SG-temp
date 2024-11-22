@@ -98,3 +98,117 @@ export const returnLovIfApplicable = (fName:KeyWithAnyModel, lovSelector:KeyWith
   }
 }
 
+import { assignUpdateUserInput } from "./yourFile"; // Replace with your file path
+
+describe("assignUpdateUserInput", () => {
+  let getUsInput: any;
+  let updateUserInputs: any;
+
+  beforeEach(() => {
+    getUsInput = {
+      "field1_a_1": "newValue1",
+      "field2_a_1": "newValue2",
+    };
+    updateUserInputs = {
+      field1: "oldValue1",
+      field2: "oldValue2",
+    };
+  });
+
+  it("should update matching fields in updateUserInputs", async () => {
+    const result = await assignUpdateUserInput(getUsInput, updateUserInputs)();
+
+    expect(result).toEqual({
+      field1: "newValue1",
+      field2: "newValue2",
+    });
+  });
+
+  it("should not update fields if getUsInput is null", async () => {
+    getUsInput = null;
+
+    const result = await assignUpdateUserInput(getUsInput, updateUserInputs)();
+
+    expect(result).toEqual(updateUserInputs);
+  });
+
+  it("should not update fields if updateUserInputs is null", async () => {
+    updateUserInputs = null;
+
+    const result = await assignUpdateUserInput(getUsInput, updateUserInputs)();
+
+    expect(result).toBeNull();
+  });
+
+  it("should not add fields not in updateUserInputs", async () => {
+    getUsInput["field3_a_1"] = "newValue3";
+
+    const result = await assignUpdateUserInput(getUsInput, updateUserInputs)();
+
+    expect(result).toEqual({
+      field1: "newValue1",
+      field2: "newValue2",
+    });
+  });
+});
+
+
+
+import { removeUserInput } from "./yourFile"; // Replace with your file path
+
+describe("removeUserInput", () => {
+  let mockUpdateUserInputs: any;
+  let dependencyFieldsSelector: any;
+  let conditionalFieldSelector: any;
+
+  beforeEach(() => {
+    mockUpdateUserInputs = { field1: "value1" };
+    dependencyFieldsSelector = {
+      workType: { value: "A" },
+    };
+    conditionalFieldSelector = {
+      removedFields: {},
+      newFields: {},
+    };
+  });
+
+  it("should reset updateUserInputs if conditions are met", async () => {
+    dependencyFieldsSelector.workType.value = "O";
+
+    const result = await removeUserInput(
+      mockUpdateUserInputs,
+      dependencyFieldsSelector,
+      conditionalFieldSelector
+    )();
+
+    expect(result).toEqual({});
+  });
+
+  it("should reset updateUserInputs if removedFields and newFields are empty", async () => {
+    dependencyFieldsSelector.workType.value = "A";
+
+    const result = await removeUserInput(
+      mockUpdateUserInputs,
+      dependencyFieldsSelector,
+      conditionalFieldSelector
+    )();
+
+    expect(result).toEqual({});
+  });
+
+  it("should not reset updateUserInputs if conditions are not met", async () => {
+    dependencyFieldsSelector.workType.value = "A";
+    conditionalFieldSelector.removedFields = { someField: "value" };
+
+    const result = await removeUserInput(
+      mockUpdateUserInputs,
+      dependencyFieldsSelector,
+      conditionalFieldSelector
+    )();
+
+    expect(result).toEqual(mockUpdateUserInputs);
+  });
+});
+
+
+
