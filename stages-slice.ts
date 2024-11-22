@@ -319,3 +319,149 @@ const stages = createSlice({
 export const stagesAction = stages.actions;
 
 export default stages;
+
+
+
+
+
+
+import stages, { stagesAction } from "./stages";
+import { StageSliceModel } from "../model/common-model";
+
+describe("stages slice", () => {
+  let initialState: StageSliceModel;
+
+  beforeEach(() => {
+    initialState = {
+      stages: [],
+      myinfoResponse: {},
+      ibankingResponse: {},
+      userInput: {
+        applicants: {},
+        missingFields: {},
+      },
+      updatedStageInputs: [],
+      taxCustom: {
+        toggle: false,
+        addTaxToggle: false,
+      },
+      conditionalFields: {
+        newFields: {},
+        removedFields: {},
+      },
+      myinfoMissingFields: null,
+      myinfoMissingLogicFields: null,
+      dependencyFields: {
+        workType: null,
+      },
+      currentStage: null,
+      journeyType: null,
+      otpOpen: false,
+      otpTrigger: true,
+      otpResume: false,
+      isDocument: false,
+      lastStageId: null,
+      otpSuccess: false,
+      isDocumentUpload: false,
+      ccplChannel: null,
+    };
+  });
+
+  test("should return the initial state", () => {
+    const result = stages.reducer(undefined, { type: undefined });
+    expect(result).toEqual(initialState);
+  });
+
+  test("should handle getStage when stages are empty", () => {
+    const action = {
+      type: stagesAction.getStage.type,
+      payload: {
+        id: "stage1",
+        formConfig: { field1: "value1" },
+      },
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.stages).toEqual([
+      { stageId: "stage1", stageInfo: { field1: "value1" } },
+    ]);
+  });
+
+  test("should handle addMyinfoData", () => {
+    const action = {
+      type: stagesAction.addMyinfoData.type,
+      payload: {
+        applicants: { name: "John Doe", age: 30 },
+      },
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.myinfoResponse).toEqual({ name: "John Doe", age: 30 });
+    expect(result.userInput.missingFields).toBeNull();
+  });
+
+  test("should handle updateTaxToggle", () => {
+    const result = stages.reducer(initialState, stagesAction.updateTaxToggle());
+    expect(result.taxCustom.toggle).toBe(true);
+  });
+
+  test("should handle updateAddTaxToggle", () => {
+    const result = stages.reducer(initialState, stagesAction.updateAddTaxToggle());
+    expect(result.taxCustom.addTaxToggle).toBe(true);
+  });
+
+  test("should handle updateUserInputFields", () => {
+    const action = {
+      type: stagesAction.updateUserInputFields.type,
+      payload: { name: "Jane Doe", email: "jane@example.com" },
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.userInput.applicants).toEqual({ name: "Jane Doe", email: "jane@example.com" });
+  });
+
+  test("should handle setJourneyType", () => {
+    const action = {
+      type: stagesAction.setJourneyType.type,
+      payload: "Personal Loan",
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.journeyType).toBe("Personal Loan");
+  });
+
+  test("should handle setOtpShow", () => {
+    const action = {
+      type: stagesAction.setOtpShow.type,
+      payload: true,
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.otpOpen).toBe(true);
+  });
+
+  test("should handle resetCurrentStage", () => {
+    const action = {
+      type: stagesAction.resetCurrentStage.type,
+      payload: "stage2",
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.currentStage).toBe("stage2");
+  });
+
+  test("should handle removeMandatoryFields", () => {
+    const action = {
+      type: stagesAction.removeMandatoryFields.type,
+      payload: { field1: "missing" },
+    };
+    const result = stages.reducer(initialState, action);
+    expect(result.userInput.missingFields).toEqual({ field1: "missing" });
+  });
+
+  test("should handle updateLastStageInput", () => {
+    const state = { ...initialState, userInput: { applicants: { name: "John" } } };
+    const action = {
+      type: stagesAction.updateLastStageInput.type,
+      payload: "stage3",
+    };
+    const result = stages.reducer(state, action);
+    expect(result.updatedStageInputs).toEqual([
+      { stageId: "stage3", applicants: { name: "John" } },
+    ]);
+  });
+});
