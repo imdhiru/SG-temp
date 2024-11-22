@@ -189,3 +189,117 @@ class service {
 const generatePayload = new service();
 
 export default generatePayload;
+
+
+
+import generatePayload from './service';
+import { getUrl } from '../utils/common/change.utils';
+import { store } from '../utils/store/store';
+import submitService from './submit-service';
+
+jest.mock('../utils/common/change.utils', () => ({
+  getUrl: {
+    getProductInfo: jest.fn(),
+    getParameterByName: jest.fn(),
+    getChannelRefNo: jest.fn(),
+    getRate: jest.fn(),
+  },
+}));
+
+jest.mock('../utils/store/store', () => ({
+  store: {
+    getState: jest.fn(),
+  },
+}));
+
+jest.mock('./submit-service', () => ({
+  generateUUID: jest.fn(() => 'mock-uuid'),
+}));
+
+describe('Service class', () => {
+  describe('formConfigPayload', () => {
+    it('should generate payload with product info and default product type', () => {
+      const mockProductInfo = [{ product_type: 'mockType' }];
+      (getUrl.getProductInfo as jest.Mock).mockReturnValue(mockProductInfo);
+      (getUrl.getParameterByName as jest.Mock).mockReturnValue(null);
+
+      const result = generatePayload.formConfigPayload();
+      expect(result.products).toEqual(mockProductInfo);
+      expect(result.productsInBundle).toEqual(['mockType']);
+    });
+
+    it('should generate payload with product type from URL', () => {
+      (getUrl.getProductInfo as jest.Mock).mockReturnValue([]);
+      (getUrl.getParameterByName as jest.Mock).mockReturnValue('URLType');
+
+      const result = generatePayload.formConfigPayload();
+      expect(result.productsInBundle).toEqual(['URLType']);
+    });
+  });
+
+  describe('createPayload', () => {
+    it('should generate payload with application reference', () => {
+      (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({
+        channelRefNo: 'mock-channel',
+        applicationRefNo: 'mock-app-ref',
+      });
+
+      const result = generatePayload.createPayload(
+        { stageInfo: {}, stageId: 'mock-stage' },
+        {},
+        'mock/url'
+      );
+
+      expect(result.application.channel_reference).toBe('mock-channel');
+      expect(result.application.application_reference).toBe('mock-app-ref');
+    });
+
+    it('should add save_exit flag if isExit is true', () => {
+      (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({
+        channelRefNo: 'mock-channel',
+        applicationRefNo: null,
+      });
+
+      const result = generatePayload.createPayload(
+        { stageInfo: {}, stageId: 'mock-stage' },
+        {},
+        'mock/url',
+        true
+      );
+
+      expect(result.application.save_exit).toBe('Yes');
+    });
+  });
+
+  describe('offerPayload', () => {
+    it('should generate payload with channel reference', () => {
+      (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({
+        channelRefNo: 'mock-channel',
+        applicationRefNo: 'mock-app-ref',
+      });
+
+      const result = generatePayload.offerPayload({});
+      expect(result.application.channel_reference).toBe('mock-channel');
+      expect(result.application.application_reference).toBe('mock-app-ref');
+    });
+  });
+
+  describe('getCardActivationPayload', () => {
+    it('should generate payload with product details', () => {
+      const result = generatePayload.getCardActivationPayload({
+        productSequenceNo: '1',
+        productCategory: 'mock-category',
+        productType: 'mock-type',
+      });
+
+      expect(result.application_reference_no).toBeUndefined(); // Assuming getChannelRefNo().applicationRefNo is null
+      expect(result.country_code).toBe('SG');
+      expect(result.applicant_sequence_no).toBe('1');
+      expect(result.product_sequence_no).toBe('1');
+      expect(result.product_category).toBe('mock-category');
+      expect(result.product_type).toBe('mock-type');
+      expect(result.tracking_id).toBe('mock-uuid');
+    });
+  });
+});
+
