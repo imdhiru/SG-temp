@@ -116,104 +116,196 @@ export default App;
 
 
 
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
+import { store } from './utils/store/store';
+import { useSelector } from 'react-redux';
 
-
-import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Provider } from "react-redux";
-import { BrowserRouter } from "react-router-dom";
-import { createStore } from "redux";
-import App from "./App";
-import { StoreModel } from "./utils/model/common-model";
-
-// Mock Redux store and reducers
-const mockStore = (state: Partial<StoreModel>) => createStore(() => state);
-
-jest.mock("react-activity-detector", () => (props: any) => {
-  const { onIdle, onActive } = props;
-  return (
-    <div>
-      <button onClick={onIdle}>Simulate Idle</button>
-      <button onClick={onActive}>Simulate Active</button>
-    </div>
-  );
-});
-
-jest.mock("./services/track-events", () => ({
+// Mocking child components and dependencies
+jest.mock('./router/main', () => jest.fn(() => <div data-testid="main"></div>));
+jest.mock('./shared/components/model/model', () =>
+  jest.fn(() => <div data-testid="globalError"></div>)
+);
+jest.mock('./shared/components/spinner/spinner', () =>
+  jest.fn(() => <div data-testid="spinner"></div>)
+);
+jest.mock('./shared/components/model/dynamic-model', () =>
+  jest.fn(() => <div data-testid="dynamicModel"></div>)
+);
+jest.mock('./shared/components/model/idle-time-out', () =>
+  jest.fn(() => <div data-testid="idleTimeout"></div>)
+);
+jest.mock('react-activity-detector', () =>
+  jest.fn(() => <div data-testid="activityDetector"></div>)
+);
+jest.mock('./services/track-events', () => ({
   triggerAdobeEvent: jest.fn(),
 }));
 
-describe("App Component", () => {
-  const renderApp = (initialState: Partial<StoreModel>) => {
-    const store = mockStore(initialState);
-    return render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </Provider>
-    );
+// Mock useSelector
+const mockUseSelector = (loaderState, errorState) => {
+  useSelector.mockImplementation((selector) => {
+    if (selector.name === 'loaderSelector') {
+      return loaderState;
+    }
+    if (selector.name === 'errorSelector') {
+      return errorState;
+    }
+    return {};
+  });
+};
+
+describe('App Component', () => {
+  const mockLoader = {
+    isFetching: {
+      isFetching: true,
+    },
   };
 
-  test("renders the Main component", () => {
-    renderApp({});
-    expect(screen.getByText(/main component content/i)).toBeInTheDocument(); // Replace with actual content inside `Main` component
+  const mockError = {
+    errors: ['Error 1'],
+    exceptionList: [{ error_header: 'Exception Header' }],
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  test("disables right-click on the window", () => {
-    const { container } = renderApp({});
-    const contextMenuEvent = new MouseEvent("contextmenu", { bubbles: true });
-    fireEvent(container, contextMenuEvent);
-    expect(contextMenuEvent.defaultPrevented).toBe(true);
+  test('renders main component', () => {
+    mockUseSelector({}, {});
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(screen.getByTestId('main')).toBeInTheDocument();
   });
 
-  test("shows Spinner when loaderState is true", () => {
-    renderApp({ loader: { isFetching: true } });
-    expect(screen.getByTestId("spinner")).toBeInTheDocument(); // Add a `data-testid` to Spinner if not already
+  test('disables right-click functionality', () => {
+    mockUseSelector({}, {});
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    const event = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    fireEvent(window, event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 
-  test("shows error Model when errors exist", () => {
-    renderApp({ error: { errors: ["Error 1", "Error 2"] } });
-    expect(screen.getByTestId("globalError")).toBeInTheDocument(); // Add a `data-testid` to Model if not already
+  test('renders spinner when loader state is active', () => {
+    mockUseSelector(mockLoader, {});
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(screen.getByTestId('spinner')).toBeInTheDocument();
   });
 
-  test("shows DynamicModel when exceptionList exists", () => {
-    renderApp({ error: { exceptionList: [{ error_header: "Header" }] } });
-    expect(screen.getByTestId("dynamicModel")).toBeInTheDocument(); // Add a `data-testid` to DynamicModel if not already
+  test('renders global error model when errors exist', () => {
+    mockUseSelector({}, mockError);
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(screen.getByTestId('globalError')).toBeInTheDocument();
   });
 
-  test("opens IdleTimeOutModel on idle", () => {
-    renderApp({});
-    fireEvent.click(screen.getByText("Simulate Idle"));
-    expect(screen.getByText("IdleTimeOutModel content")).toBeInTheDocument(); // Replace with actual content inside `IdleTimeOutModel`
+  test('renders dynamic model when exception list is not empty', () => {
+    mockUseSelector({}, mockError);
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(screen.getByTestId('dynamicModel')).toBeInTheDocument();
   });
 
-  test("closes IdleTimeOutModel on popup close", () => {
-    renderApp({});
-    fireEvent.click(screen.getByText("Simulate Idle"));
-    fireEvent.click(screen.getByText("Close Popup")); // Replace with actual button content in IdleTimeOutModel
-    expect(screen.queryByText("IdleTimeOutModel content")).not.toBeInTheDocument();
+  test('renders idle timeout model when openIdlePopUp is true', () => {
+    mockUseSelector({}, {});
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    // Simulate idle state
+    fireEvent(screen.getByTestId('activityDetector'), new Event('idle'));
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(screen.getByTestId('idleTimeout')).toBeInTheDocument();
   });
 
-  test("handles onActive event correctly", () => {
-    renderApp({ loader: { isFetching: false } });
-    fireEvent.click(screen.getByText("Simulate Active"));
-    expect(screen.queryByText("IdleTimeOutModel content")).not.toBeInTheDocument();
+  test('triggers onIdle and onActive callbacks', () => {
+    mockUseSelector({}, {});
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    const activityDetector = screen.getByTestId('activityDetector');
+
+    // Trigger onIdle
+    fireEvent(activityDetector, new Event('idle'));
+    expect(screen.queryByTestId('idleTimeout')).toBeInTheDocument();
+
+    // Trigger onActive
+    fireEvent(activityDetector, new Event('active'));
+    expect(screen.queryByTestId('idleTimeout')).not.toBeInTheDocument();
   });
 
-  test("tracks Adobe events for form errors", () => {
-    const { default: trackEvents } = require("./services/track-events");
-    renderApp({ error: { errors: ["Error"], exceptionList: [] } });
-    expect(trackEvents.triggerAdobeEvent).toHaveBeenCalledWith("formError");
+  test('triggers Adobe event on formError', () => {
+    const trackEvents = require('./services/track-events');
+    mockUseSelector({}, mockError);
+
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    expect(trackEvents.triggerAdobeEvent).toHaveBeenCalledWith('formError');
   });
 
-  test("tracks Adobe events for form abandonment", () => {
-    const { default: trackEvents } = require("./services/track-events");
-    const unloadEvent = new Event("unload");
-    window.dispatchEvent(unloadEvent);
+  test('triggers Adobe event on formAbandonment', () => {
+    const trackEvents = require('./services/track-events');
+    mockUseSelector({}, {});
+
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+    const unloadEvent = new Event('unload');
+    fireEvent(window, unloadEvent);
+
     expect(trackEvents.triggerAdobeEvent).toHaveBeenCalledWith(
-      "formAbandonment",
-      "BrowserClose"
+      'formAbandonment',
+      'BrowserClose'
     );
   });
 });
+
+
