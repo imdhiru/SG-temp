@@ -1,3 +1,110 @@
+
+jest.mock("js-sha256", () => ({
+  sha256: jest.fn(),
+}));
+
+jest.mock("../services/submit-service", () => ({
+  generateUUID: "mocked-uuid",
+}));
+
+jest.mock("../utils/common/change.utils", () => ({
+  getUrl: {
+    getChannelRefNo: jest.fn(),
+    getParameterByName: jest.fn(),
+    getProductInfo: jest.fn(),
+  },
+  getTokenChno: jest.fn(),
+  keyToken: jest.fn(),
+}));
+
+describe("generateSHA256Encrypt", () => {
+  let mockRequest: any;
+  let mockSessionUid: string;
+  let mockUrlEndPoint: string;
+  let mockScClientContextHeaders: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequest = { data: { application: {}, applicant: {}, mobileNo: "1234567890", flowType: "mockFlow", applnRefNo: "mockRefNo" } };
+    mockSessionUid = "mockSessionUid";
+    mockUrlEndPoint = "mockEndPoint";
+    mockScClientContextHeaders = {};
+  });
+
+  it("should handle 'resume' urlEndPoint and compute the correct hash", () => {
+    (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({ applicationRefNo: "mockAppRef" });
+    process.env.REACT_APP_XRTOB = "mockXrtob";
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, "resume", mockScClientContextHeaders);
+
+    expect(sha256).toHaveBeenCalledWith("mockXrtobmockSessionUidmockAppRef");
+    expect(mockScClientContextHeaders["authorization"]).toBeDefined();
+  });
+
+  it("should handle 'customer' urlEndPoint and add tokenKeys and personKeys", () => {
+    (getTokenChno as jest.Mock).mockReturnValue({ channelRefNo: "mockChannelRefNo", code: "mockCode" });
+    (keyToken as jest.Mock).mockImplementation((key) => `${key}-value`);
+    process.env.REACT_APP_XRTOB = "mockXrtob";
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, "customer", mockScClientContextHeaders);
+
+    expect(sha256).toHaveBeenCalledWith("mockXrtobauthorize-keys-value");
+    expect(sha256).toHaveBeenCalledWith("mockXrtobmyinfo-keys-value");
+    expect(mockScClientContextHeaders["tokenKeys"]).toBeDefined();
+    expect(mockScClientContextHeaders["personKeys"]).toBeDefined();
+  });
+
+  it("should handle 'generate' urlEndPoint and add generate_otp", () => {
+    process.env.REACT_APP_XRTOB = "mockXrtob";
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, "generate", mockScClientContextHeaders);
+
+    expect(sha256).toHaveBeenCalledWith("mockXrtob1234567890mockFlowmockRefNo");
+    expect(mockScClientContextHeaders["generate_otp"]).toBeDefined();
+  });
+
+  it("should handle 'verify' urlEndPoint and add verify_otp", () => {
+    process.env.REACT_APP_XRTOB = "mockXrtob";
+    mockRequest.data = {
+      "enc-otp": "mockEncOtp",
+      "flow-type": "mockFlowType",
+      "key-index": "mockKeyIndex",
+      "mobile-no": "mockMobileNo",
+      "otp-sn": "mockOtpSn",
+      "user-id": "mockUserId",
+    };
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, "verify", mockScClientContextHeaders);
+
+    expect(sha256).toHaveBeenCalledWith("mockXrtobmockEncOtpmockFlowTypemockKeyIndexmockMobileNomockOtpSnmockUserId");
+    expect(mockScClientContextHeaders["verify_otp"]).toBeDefined();
+  });
+
+  it("should handle default case and add application and applicants hashes", () => {
+    (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({ channelRefNo: "mockChannelRefNo", applicationRefNo: "mockAppRef" });
+    process.env.REACT_APP_XRTOB = "mockXrtob";
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, "apply", mockScClientContextHeaders);
+
+    expect(mockScClientContextHeaders["application"]).toBeDefined();
+    expect(mockScClientContextHeaders["applicants"]).toBeDefined();
+  });
+
+  it("should remove unnecessary headers for 'generate' and 'verify'", () => {
+    mockUrlEndPoint = "generate";
+
+    generateSHA256Encrypt(mockRequest, mockSessionUid, mockUrlEndPoint, mockScClientContextHeaders);
+
+    expect(mockScClientContextHeaders["application"]).toBeUndefined();
+    expect(mockScClientContextHeaders["applicants"]).toBeUndefined();
+  });
+});
+
+
+
+
+
+
 import axios from "axios";
 import { sha256 } from "js-sha256";
 
