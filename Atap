@@ -1,104 +1,177 @@
 
-jest.mock("js-sha256", () => ({
-  sha256: jest.fn(),
-}));
+// File: defaultInterceptor.test.ts
 
-jest.mock("../services/submit-service", () => ({
-  generateUUID: "mocked-uuid",
-}));
+import axios from "axios";
+import { defaultInterceptor } from "../path/to/your/module"; // Update the path
+import { store } from "../path/to/store"; // Update the path
+import submitService from "../path/to/submit-service"; // Update the path
+import { getUrl } from "../path/to/utils"; // Update the path
+import { generateSHA256Encrypt } from "../path/to/your/module"; // Update the path
 
-jest.mock("../utils/common/change.utils", () => ({
-  getUrl: {
-    getChannelRefNo: jest.fn(),
-    getParameterByName: jest.fn(),
-    getProductInfo: jest.fn(),
+jest.mock("axios");
+jest.mock("../path/to/store", () => ({
+  store: {
+    getState: jest.fn(),
   },
-  getTokenChno: jest.fn(),
-  keyToken: jest.fn(),
+}));
+jest.mock("../path/to/submit-service", () => ({
+  generateUUID: "mock-uuid",
+}));
+jest.mock("../path/to/utils", () => ({
+  getUrl: {
+    getParameterByName: jest.fn(),
+  },
+}));
+jest.mock("../path/to/your/module", () => ({
+  generateSHA256Encrypt: jest.fn(),
 }));
 
-describe("generateSHA256Encrypt", () => {
-  let mockRequest: any;
-  let mockSessionUid: string;
-  let mockUrlEndPoint: string;
-  let mockScClientContextHeaders: any;
+describe("defaultInterceptor", () => {
+  let addRequestInterceptor: jest.SpyInstance;
+  let addResponseInterceptor: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequest = { data: { application: {}, applicant: {}, mobileNo: "1234567890", flowType: "mockFlow", applnRefNo: "mockRefNo" } };
-    mockSessionUid = "mockSessionUid";
-    mockUrlEndPoint = "mockEndPoint";
-    mockScClientContextHeaders = {};
+
+    addRequestInterceptor = jest.spyOn(axios.interceptors.request, "use");
+    addResponseInterceptor = jest.spyOn(axios.interceptors.response, "use");
+
+    store.getState.mockReturnValue({
+      auth: { sessionUid: "mock-session-uid" },
+    });
+
+    getUrl.getParameterByName.mockImplementation((param) => {
+      if (param === "isMyInfoVirtualNRIC") return "true";
+      if (param === "transfer-token") return "mock-transfer-token";
+      if (param === "SSCode") return "mock-ss-code";
+      return null;
+    });
   });
 
-  it("should handle 'resume' urlEndPoint and compute the correct hash", () => {
-    (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({ applicationRefNo: "mockAppRef" });
-    process.env.REACT_APP_XRTOB = "mockXrtob";
+  it("should register request and response interceptors", () => {
+    defaultInterceptor();
 
-    generateSHA256Encrypt(mockRequest, mockSessionUid, "resume", mockScClientContextHeaders);
-
-    expect(sha256).toHaveBeenCalledWith("mockXrtobmockSessionUidmockAppRef");
-    expect(mockScClientContextHeaders["authorization"]).toBeDefined();
+    expect(addRequestInterceptor).toHaveBeenCalledTimes(1);
+    expect(addResponseInterceptor).toHaveBeenCalledTimes(1);
   });
 
-  it("should handle 'customer' urlEndPoint and add tokenKeys and personKeys", () => {
-    (getTokenChno as jest.Mock).mockReturnValue({ channelRefNo: "mockChannelRefNo", code: "mockCode" });
-    (keyToken as jest.Mock).mockImplementation((key) => `${key}-value`);
-    process.env.REACT_APP_XRTOB = "mockXrtob";
-
-    generateSHA256Encrypt(mockRequest, mockSessionUid, "customer", mockScClientContextHeaders);
-
-    expect(sha256).toHaveBeenCalledWith("mockXrtobauthorize-keys-value");
-    expect(sha256).toHaveBeenCalledWith("mockXrtobmyinfo-keys-value");
-    expect(mockScClientContextHeaders["tokenKeys"]).toBeDefined();
-    expect(mockScClientContextHeaders["personKeys"]).toBeDefined();
-  });
-
-  it("should handle 'generate' urlEndPoint and add generate_otp", () => {
-    process.env.REACT_APP_XRTOB = "mockXrtob";
-
-    generateSHA256Encrypt(mockRequest, mockSessionUid, "generate", mockScClientContextHeaders);
-
-    expect(sha256).toHaveBeenCalledWith("mockXrtob1234567890mockFlowmockRefNo");
-    expect(mockScClientContextHeaders["generate_otp"]).toBeDefined();
-  });
-
-  it("should handle 'verify' urlEndPoint and add verify_otp", () => {
-    process.env.REACT_APP_XRTOB = "mockXrtob";
-    mockRequest.data = {
-      "enc-otp": "mockEncOtp",
-      "flow-type": "mockFlowType",
-      "key-index": "mockKeyIndex",
-      "mobile-no": "mockMobileNo",
-      "otp-sn": "mockOtpSn",
-      "user-id": "mockUserId",
+  it("should add SC-CLIENT-CONTEXT headers and set abort controller", () => {
+    const mockRequest = {
+      url: "https://mockapi.com/customer",
+      headers: {
+        set: jest.fn(),
+      },
     };
 
-    generateSHA256Encrypt(mockRequest, mockSessionUid, "verify", mockScClientContextHeaders);
+    const requestInterceptor = addRequestInterceptor.mock.calls[0][0];
+    const result = requestInterceptor(mockRequest);
 
-    expect(sha256).toHaveBeenCalledWith("mockXrtobmockEncOtpmockFlowTypemockKeyIndexmockMobileNomockOtpSnmockUserId");
-    expect(mockScClientContextHeaders["verify_otp"]).toBeDefined();
+    expect(result.headers["SC-CLIENT-CONTEXT"]).toBeDefined();
+    expect(result.signal).toBeDefined();
+    expect(mockRequest.headers.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "Content-Type": "application/json;charset=UTF-8",
+        requestId: "mock-uuid",
+        virtual: "YES",
+      })
+    );
+    expect(generateSHA256Encrypt).toHaveBeenCalledWith(
+      mockRequest,
+      "mock-session-uid",
+      "customer",
+      expect.any(Object)
+    );
   });
 
-  it("should handle default case and add application and applicants hashes", () => {
-    (getUrl.getChannelRefNo as jest.Mock).mockReturnValue({ channelRefNo: "mockChannelRefNo", applicationRefNo: "mockAppRef" });
-    process.env.REACT_APP_XRTOB = "mockXrtob";
+  it("should add transfer-token for ibank endpoint", () => {
+    const mockRequest = {
+      url: "https://mockapi.com/ibank/transfer",
+      headers: {
+        set: jest.fn(),
+      },
+    };
 
-    generateSHA256Encrypt(mockRequest, mockSessionUid, "apply", mockScClientContextHeaders);
+    const requestInterceptor = addRequestInterceptor.mock.calls[0][0];
+    const result = requestInterceptor(mockRequest);
 
-    expect(mockScClientContextHeaders["application"]).toBeDefined();
-    expect(mockScClientContextHeaders["applicants"]).toBeDefined();
+    expect(mockRequest.headers.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "Content-Type": "application/json;charset=UTF-8",
+        "transfer-token": "mock-transfer-token",
+      })
+    );
   });
 
-  it("should remove unnecessary headers for 'generate' and 'verify'", () => {
-    mockUrlEndPoint = "generate";
+  it("should clear timeout on response success", () => {
+    const mockResponse = { data: "success" };
+    const responseInterceptor = addResponseInterceptor.mock.calls[0][0];
 
-    generateSHA256Encrypt(mockRequest, mockSessionUid, mockUrlEndPoint, mockScClientContextHeaders);
+    jest.useFakeTimers();
 
-    expect(mockScClientContextHeaders["application"]).toBeUndefined();
-    expect(mockScClientContextHeaders["applicants"]).toBeUndefined();
+    defaultInterceptor();
+    responseInterceptor(mockResponse);
+
+    jest.runAllTimers();
+
+    expect(clearTimeout).toHaveBeenCalled();
   });
 });
+
+============================================
+
+
+// File: extractValue.test.ts
+
+import { extractValue } from "../path/to/your/module"; // Adjust the import path
+
+describe("extractValue", () => {
+  it("should concatenate values of the object in sorted key order", () => {
+    const input = { b: "Beta", a: "Alpha", c: "Gamma" };
+    const result = extractValue(input);
+    expect(result).toBe("AlphaBetaGamma"); // 'a', 'b', 'c' keys are sorted
+  });
+
+  it("should return an empty string for an empty object", () => {
+    const input = {};
+    const result = extractValue(input);
+    expect(result).toBe("");
+  });
+
+  it("should handle objects with numeric values", () => {
+    const input = { a: 10, b: 20, c: 30 };
+    const result = extractValue(input);
+    expect(result).toBe("102030"); // Values are concatenated as strings
+  });
+
+  it("should handle mixed data types (strings, numbers, booleans)", () => {
+    const input = { b: false, a: "Test", c: 42 };
+    const result = extractValue(input);
+    expect(result).toBe("Testfalse42"); // Booleans are coerced to strings
+  });
+
+  it("should handle nested objects gracefully", () => {
+    const input = { a: { nested: "value" }, b: "Beta" };
+    const result = extractValue(input);
+    expect(result).toBe("[object Object]Beta"); // Objects are coerced to "[object Object]"
+  });
+
+  it("should throw an error for null or undefined input", () => {
+    expect(() => extractValue(null)).toThrow(); // Replace with specific error handling if needed
+    expect(() => extractValue(undefined)).toThrow();
+  });
+
+  it("should handle arrays as values", () => {
+    const input = { a: [1, 2, 3], b: "Test" };
+    const result = extractValue(input);
+    expect(result).toBe("1,2,3Test"); // Arrays are coerced to their string representation
+  });
+});
+
+
+
+
+
+
 
 
 
