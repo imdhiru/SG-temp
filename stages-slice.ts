@@ -1,3 +1,155 @@
+
+import stagesReducer, { stageActions } from './stagesSlice';
+
+describe('stages reducer - 100% coverage', () => {
+  const initialState = {
+    stages: [],
+    myinfoResponse: {},
+    ibankingResponse: {},
+    userInput: {
+      applicants: {},
+      missingFields: {}
+    },
+    updatedStageInputs: [],
+    taxCustom: {
+      toggle: false,
+      addTaxToggle: false
+    },
+    conditionalFields: {
+      newFields: {},
+      removedFields: {}
+    },
+    myinfoMissingFields: null,
+    myinfoMissingLogicFields: null,
+    dependencyFields: {
+      workType: null
+    },
+    currentStage: null,
+    journeyType: null,
+    otpOpen: false,
+    otpTrigger: true,
+    otpResume: false,
+    isDocument: false,
+    lastStageId: null,
+    otpSuccess: false,
+    isDocumentUpload: false,
+    ccplChannel: null
+  };
+
+  it('should return the initial state when no action is passed', () => {
+    expect(stagesReducer(undefined, {})).toEqual(initialState);
+  });
+
+  it('should add a new stage if stages are empty and id is not setDocumentList or setApplicantList', () => {
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'newStage',
+        formConfig: { field1: 'value1' }
+      }
+    };
+    const newState = stagesReducer(initialState, action);
+    expect(newState.stages).toHaveLength(1);
+    expect(newState.stages[0].stageId).toBe('newStage');
+    expect(newState.stages[0].stageInfo).toEqual({ field1: 'value1' });
+  });
+
+  it('should update applicants when id is setApplicantList', () => {
+    const initialWithStage = {
+      ...initialState,
+      stages: [{ stageId: 'existingStage', stageInfo: {} }]
+    };
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'setApplicantList',
+        formConfig: { applicants: { applicant1: 'data' } }
+      }
+    };
+    const newState = stagesReducer(initialWithStage, action);
+    expect(newState.stages[0].stageInfo.applicants).toEqual({
+      applicant1: 'data'
+    });
+  });
+
+  it('should update applicant_documents when id is setDocumentList and documents are provided', () => {
+    const initialWithStage = {
+      ...initialState,
+      stages: [{ stageId: 'existingStage', stageInfo: {} }]
+    };
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'setDocumentList',
+        formConfig: { applicant_documents: [{ doc1: 'data' }] }
+      }
+    };
+    const newState = stagesReducer(initialWithStage, action);
+    expect(newState.stages[0].stageInfo.applicant_documents).toEqual([
+      { doc1: 'data' }
+    ]);
+  });
+
+  it('should not update applicant_documents if id is setDocumentList but no documents are provided', () => {
+    const initialWithStage = {
+      ...initialState,
+      stages: [{ stageId: 'existingStage', stageInfo: {} }]
+    };
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'setDocumentList',
+        formConfig: { applicant_documents: [] }
+      }
+    };
+    const newState = stagesReducer(initialWithStage, action);
+    expect(newState.stages[0].stageInfo.applicant_documents).toBeUndefined();
+  });
+
+  it('should update stageId and stageInfo if stages exist and id is different', () => {
+    const initialWithStage = {
+      ...initialState,
+      stages: [{ stageId: 'existingStage', stageInfo: {} }]
+    };
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'newStage',
+        formConfig: { field2: 'value2' }
+      }
+    };
+    const newState = stagesReducer(initialWithStage, action);
+    expect(newState.stages[0].stageId).toBe('newStage');
+    expect(newState.stages[0].stageInfo).toEqual({ field2: 'value2' });
+  });
+
+  it('should handle adding new stage when multiple conditions are not met', () => {
+    const initialWithMultipleStages = {
+      ...initialState,
+      stages: [
+        { stageId: 'stage1', stageInfo: {} },
+        { stageId: 'stage2', stageInfo: {} }
+      ]
+    };
+    const action = {
+      type: stageActions.getStage.type,
+      payload: {
+        id: 'setDocumentList',
+        formConfig: { applicant_documents: [] }
+      }
+    };
+    const newState = stagesReducer(initialWithMultipleStages, action);
+    expect(newState.stages).toHaveLength(2);
+    expect(newState.stages[0].stageId).toBe('stage1');
+    expect(newState.stages[1].stageId).toBe('stage2');
+  });
+});
+
+
+
+
+
+
 import { createSlice } from "@reduxjs/toolkit";
 import { StageSliceModel} from "../model/common-model"; 
 
