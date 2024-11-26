@@ -5,12 +5,18 @@ import ThankYouBanner from "./thankyou-banner";
 import ThankYouSurvey from "./thankyou-survey"
 const ThankYouCC = (props: KeyWithAnyModel) => {
   const applicationDetails = props.applicationDetails;
+  console.log("applicatio",applicationDetails)
   const thankyou = props.thankyou;
+  console.log("thankyou",thankyou)
 
   const getTimelineData = () => {
+    
     if (!applicationDetails.isStp) {
+      console.log("thansibi",thankyou[applicationDetails.thankyouProp].CCPL.timeLine)
       return thankyou[applicationDetails.thankyouProp].CCPL.timeLine;
+
     }
+
     return thankyou.CCSTP;
   };
   return (
@@ -22,11 +28,11 @@ const ThankYouCC = (props: KeyWithAnyModel) => {
             : thankyou.STPCCBanner.banner_header
         }
         banner_content={true}
-        banner_body_1={
-          !applicationDetails.isStp
-            ? thankyou[applicationDetails.thankyouProp].CCPL.banner_body_1
-            : ""
-        }
+        // banner_body_1={
+        //   !applicationDetails.isStp
+        //     ? thankyou[applicationDetails.thankyouProp].CCPL.banner_body_1
+        //     : ""
+        // }
         productName={" "}
         banner_body_2={
           !applicationDetails.isStp
