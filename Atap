@@ -1,181 +1,121 @@
-const mockStore = configureStore([]);
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import Text from "./Text"; // Adjust the import as per your file structure
 
-describe("ThankYou Component", () => {
-  let store: any;
+// Mock services and actions
+jest.mock("../../../utils/common/change.utils", () => ({
+  fieldError: jest.fn(),
+  fieldIdAppend: jest.fn(),
+  getUrl: {
+    getParameterByName: jest.fn(),
+    getUpdatedStage: jest.fn(),
+  },
+  isFieldUpdate: jest.fn(),
+  isFieldValueUpdate: jest.fn(),
+}));
+jest.mock("../../../services/validation-service", () => ({
+  allowOnlyCharacter: jest.fn(),
+}));
+
+const mockStore = configureStore([]);
+const setup = (initialState, props) => {
+  const store = mockStore(initialState);
+
+  return render(
+    <Provider store={store}>
+      <Text {...props} />
+    </Provider>
+  );
+};
+
+describe("Text Component", () => {
+  let store;
+  const props = {
+    data: {
+      logical_field_name: "referral_id_2",
+      mandatory: "Yes",
+      regex: "^[A-Za-z]+$",
+      min_length: 3,
+      rwb_label_name: "Referral Code",
+    },
+    handleCallback: jest.fn(),
+  };
 
   beforeEach(() => {
     store = mockStore({
-      stages: {
-        stages: [
-          {
-            stageInfo: {
-              application: {
-                application_reference: "12345",
-              },
-              products: [
-                {
-                  product_category: "CC",
-                  name: "Credit Card",
-                  product_sequence_number: "001",
-                  product_type: "CC",
-                  acct_details: [
-                    {
-                      account_number: "1234567890",
-                      card_no: "9876543210",
-                    },
-                  ],
-                },
-              ],
-              applicants: {
-                embossed_name_a_1: "John Doe",
-              },
-            },
-            stageId: "stage-1",
-            isDocumentUpload: false,
-          },
-        ],
-      },
+      stages: { stages: [], userInput: { applicants: {} } },
+      fielderror: { error: {} },
+      postalCode: { postalCode: {} },
+      referralcode: { refer: false, referId: "", errormsg: "" },
+      urlParam: { resume: false },
     });
   });
 
-  it("renders ThankYou component correctly", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    // Check if the component renders without errors
-    expect(wrapper.exists()).toBe(true);
+  it("renders without crashing", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+    expect(inputElement).toBeInTheDocument();
   });
 
-  it("renders ThankYouUpload when 'auth' is 'upload' or isDocumentUpload is true", () => {
-    store = mockStore({
-      stages: {
-        stages: [
-          {
-            stageInfo: {
-              application: {
-                application_reference: "12345",
-              },
-              products: [
-                {
-                  product_category: "CC",
-                  name: "Credit Card",
-                  product_sequence_number: "001",
-                  product_type: "CC",
-                  acct_details: [
-                    {
-                      account_number: "1234567890",
-                      card_no: "9876543210",
-                    },
-                  ],
-                },
-              ],
-            },
-            stageId: "stage-1",
-            isDocumentUpload: true, // Updated to true for this test case
-          },
-        ],
-      },
+  it("calls the callback on change", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+
+    fireEvent.change(inputElement, { target: { value: "ABC" } });
+    expect(props.handleCallback).toHaveBeenCalledWith(props.data, "ABC");
+  });
+
+  it("shows error for mandatory field left empty", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+
+    fireEvent.change(inputElement, { target: { value: "" } });
+    fireEvent.blur(inputElement);
+
+    expect(screen.getByText(/Referral Code cannot be empty/i)).toBeInTheDocument();
+  });
+
+  it("validates and shows error for invalid input", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+
+    fireEvent.change(inputElement, { target: { value: "123" } });
+    fireEvent.blur(inputElement);
+
+    expect(screen.getByText(/Referral Code should match the required pattern/i)).toBeInTheDocument();
+  });
+
+  it("dispatches the referral ID to Redux store on change", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+
+    fireEvent.change(inputElement, { target: { value: "REF123" } });
+    expect(store.getActions()).toContainEqual({
+      type: "referralcode/setReferralId",
+      payload: "REF123",
     });
-
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    // Expect ThankYouUpload component to render
-    expect(wrapper.find(ThankYouUpload).length).toBe(1);
   });
 
-  it("renders ThankYouCC when productCategory is 'CC'", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
+  it("handles leading/trailing space validation", () => {
+    setup(store.getState(), props);
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
 
-    // Expect ThankYouCC component to render for Credit Card category
-    expect(wrapper.find(ThankYouCC).length).toBe(1);
+    fireEvent.change(inputElement, { target: { value: " ABC " } });
+    fireEvent.blur(inputElement);
+
+    expect(screen.getByText(/Referral Code cannot have leading or trailing spaces/i)).toBeInTheDocument();
   });
 
-  it("shows Continue without Activation popup", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
+  it("renders default value from state", () => {
+    const stateWithReferralCode = {
+      ...store.getState(),
+      referralcode: { refer: true, referId: "DEFAULT_REF" },
+    };
+    setup(stateWithReferralCode, props);
 
-    // Simulate click on 'continue without activation'
-    wrapper.find('button').simulate('click');
-    // Check if the popup is displayed
-    expect(wrapper.find(PopupModel).exists()).toBe(true);
-    expect(wrapper.find(Model).exists()).toBe(true);
-  });
-
-  it("shows CCWithoutActivation UI when continueWithoutActivationUI is true", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    // Update state to trigger CCWithoutActivation UI
-    wrapper.find('button').simulate('click');
-    expect(wrapper.find(CCWithoutActivation).exists()).toBe(true);
-  });
-
-  it("navigates to OTP page when showOTPPopup is called", () => {
-    const mockNavigate = jest.fn();
-    getUrl.getParameterByName = jest.fn().mockReturnValue("auth");
-
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    wrapper.instance().showOTPPopup();
-
-    // Check that navigate was called
-    expect(mockNavigate).toHaveBeenCalledWith("/otp");
-  });
-
-  it("handles form submission correctly", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    // Simulate form submission
-    wrapper.find("form").simulate("submit");
-
-    // Check if the page redirects as expected
-    expect(window.location.href).toBe(`${process.env.REACT_APP_HOME_PAGE_URL}`);
-  });
-
-  it("triggers the popup back button handler correctly", () => {
-    const wrapper = mount(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-
-    // Simulate back button click
-    wrapper.find("button").simulate("click");
-    expect(wrapper.find(PopupModel).exists()).toBe(false);
-  });
-
-  // Snapshot test for the component rendering
-  it("should match snapshot", () => {
-    const wrapper = shallow(
-      <Provider store={store}>
-        <ThankYou />
-      </Provider>
-    );
-    expect(wrapper).toMatchSnapshot();
+    const inputElement = screen.getByPlaceholderText(/Enter referral code here/i);
+    expect(inputElement).toHaveValue("DEFAULT_REF");
   });
 });
