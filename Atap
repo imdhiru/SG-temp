@@ -1,378 +1,181 @@
+const mockStore = configureStore([]);
 
-// File: defaultInterceptor.test.ts
-
-import axios from "axios";
-import { defaultInterceptor } from "../path/to/your/module"; // Update the path
-import { store } from "../path/to/store"; // Update the path
-import submitService from "../path/to/submit-service"; // Update the path
-import { getUrl } from "../path/to/utils"; // Update the path
-import { generateSHA256Encrypt } from "../path/to/your/module"; // Update the path
-
-jest.mock("axios");
-jest.mock("../path/to/store", () => ({
-  store: {
-    getState: jest.fn(),
-  },
-}));
-jest.mock("../path/to/submit-service", () => ({
-  generateUUID: "mock-uuid",
-}));
-jest.mock("../path/to/utils", () => ({
-  getUrl: {
-    getParameterByName: jest.fn(),
-  },
-}));
-jest.mock("../path/to/your/module", () => ({
-  generateSHA256Encrypt: jest.fn(),
-}));
-
-describe("defaultInterceptor", () => {
-  let addRequestInterceptor: jest.SpyInstance;
-  let addResponseInterceptor: jest.SpyInstance;
+describe("ThankYou Component", () => {
+  let store: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    store = mockStore({
+      stages: {
+        stages: [
+          {
+            stageInfo: {
+              application: {
+                application_reference: "12345",
+              },
+              products: [
+                {
+                  product_category: "CC",
+                  name: "Credit Card",
+                  product_sequence_number: "001",
+                  product_type: "CC",
+                  acct_details: [
+                    {
+                      account_number: "1234567890",
+                      card_no: "9876543210",
+                    },
+                  ],
+                },
+              ],
+              applicants: {
+                embossed_name_a_1: "John Doe",
+              },
+            },
+            stageId: "stage-1",
+            isDocumentUpload: false,
+          },
+        ],
+      },
+    });
+  });
 
-    addRequestInterceptor = jest.spyOn(axios.interceptors.request, "use");
-    addResponseInterceptor = jest.spyOn(axios.interceptors.response, "use");
+  it("renders ThankYou component correctly", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
 
-    store.getState.mockReturnValue({
-      auth: { sessionUid: "mock-session-uid" },
+    // Check if the component renders without errors
+    expect(wrapper.exists()).toBe(true);
+  });
+
+  it("renders ThankYouUpload when 'auth' is 'upload' or isDocumentUpload is true", () => {
+    store = mockStore({
+      stages: {
+        stages: [
+          {
+            stageInfo: {
+              application: {
+                application_reference: "12345",
+              },
+              products: [
+                {
+                  product_category: "CC",
+                  name: "Credit Card",
+                  product_sequence_number: "001",
+                  product_type: "CC",
+                  acct_details: [
+                    {
+                      account_number: "1234567890",
+                      card_no: "9876543210",
+                    },
+                  ],
+                },
+              ],
+            },
+            stageId: "stage-1",
+            isDocumentUpload: true, // Updated to true for this test case
+          },
+        ],
+      },
     });
 
-    getUrl.getParameterByName.mockImplementation((param) => {
-      if (param === "isMyInfoVirtualNRIC") return "true";
-      if (param === "transfer-token") return "mock-transfer-token";
-      if (param === "SSCode") return "mock-ss-code";
-      return null;
-    });
-  });
-
-  it("should register request and response interceptors", () => {
-    defaultInterceptor();
-
-    expect(addRequestInterceptor).toHaveBeenCalledTimes(1);
-    expect(addResponseInterceptor).toHaveBeenCalledTimes(1);
-  });
-
-  it("should add SC-CLIENT-CONTEXT headers and set abort controller", () => {
-    const mockRequest = {
-      url: "https://mockapi.com/customer",
-      headers: {
-        set: jest.fn(),
-      },
-    };
-
-    const requestInterceptor = addRequestInterceptor.mock.calls[0][0];
-    const result = requestInterceptor(mockRequest);
-
-    expect(result.headers["SC-CLIENT-CONTEXT"]).toBeDefined();
-    expect(result.signal).toBeDefined();
-    expect(mockRequest.headers.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        "Content-Type": "application/json;charset=UTF-8",
-        requestId: "mock-uuid",
-        virtual: "YES",
-      })
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
     );
-    expect(generateSHA256Encrypt).toHaveBeenCalledWith(
-      mockRequest,
-      "mock-session-uid",
-      "customer",
-      expect.any(Object)
-    );
+
+    // Expect ThankYouUpload component to render
+    expect(wrapper.find(ThankYouUpload).length).toBe(1);
   });
 
-  it("should add transfer-token for ibank endpoint", () => {
-    const mockRequest = {
-      url: "https://mockapi.com/ibank/transfer",
-      headers: {
-        set: jest.fn(),
-      },
-    };
-
-    const requestInterceptor = addRequestInterceptor.mock.calls[0][0];
-    const result = requestInterceptor(mockRequest);
-
-    expect(mockRequest.headers.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        "Content-Type": "application/json;charset=UTF-8",
-        "transfer-token": "mock-transfer-token",
-      })
+  it("renders ThankYouCC when productCategory is 'CC'", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
     );
+
+    // Expect ThankYouCC component to render for Credit Card category
+    expect(wrapper.find(ThankYouCC).length).toBe(1);
   });
 
-  it("should clear timeout on response success", () => {
-    const mockResponse = { data: "success" };
-    const responseInterceptor = addResponseInterceptor.mock.calls[0][0];
+  it("shows Continue without Activation popup", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
 
-    jest.useFakeTimers();
+    // Simulate click on 'continue without activation'
+    wrapper.find('button').simulate('click');
+    // Check if the popup is displayed
+    expect(wrapper.find(PopupModel).exists()).toBe(true);
+    expect(wrapper.find(Model).exists()).toBe(true);
+  });
 
-    defaultInterceptor();
-    responseInterceptor(mockResponse);
+  it("shows CCWithoutActivation UI when continueWithoutActivationUI is true", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
 
-    jest.runAllTimers();
+    // Update state to trigger CCWithoutActivation UI
+    wrapper.find('button').simulate('click');
+    expect(wrapper.find(CCWithoutActivation).exists()).toBe(true);
+  });
 
-    expect(clearTimeout).toHaveBeenCalled();
+  it("navigates to OTP page when showOTPPopup is called", () => {
+    const mockNavigate = jest.fn();
+    getUrl.getParameterByName = jest.fn().mockReturnValue("auth");
+
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
+
+    wrapper.instance().showOTPPopup();
+
+    // Check that navigate was called
+    expect(mockNavigate).toHaveBeenCalledWith("/otp");
+  });
+
+  it("handles form submission correctly", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
+
+    // Simulate form submission
+    wrapper.find("form").simulate("submit");
+
+    // Check if the page redirects as expected
+    expect(window.location.href).toBe(`${process.env.REACT_APP_HOME_PAGE_URL}`);
+  });
+
+  it("triggers the popup back button handler correctly", () => {
+    const wrapper = mount(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
+
+    // Simulate back button click
+    wrapper.find("button").simulate("click");
+    expect(wrapper.find(PopupModel).exists()).toBe(false);
+  });
+
+  // Snapshot test for the component rendering
+  it("should match snapshot", () => {
+    const wrapper = shallow(
+      <Provider store={store}>
+        <ThankYou />
+      </Provider>
+    );
+    expect(wrapper).toMatchSnapshot();
   });
 });
-
-============================================
-
-
-// File: extractValue.test.ts
-
-import { extractValue } from "../path/to/your/module"; // Adjust the import path
-
-describe("extractValue", () => {
-  it("should concatenate values of the object in sorted key order", () => {
-    const input = { b: "Beta", a: "Alpha", c: "Gamma" };
-    const result = extractValue(input);
-    expect(result).toBe("AlphaBetaGamma"); // 'a', 'b', 'c' keys are sorted
-  });
-
-  it("should return an empty string for an empty object", () => {
-    const input = {};
-    const result = extractValue(input);
-    expect(result).toBe("");
-  });
-
-  it("should handle objects with numeric values", () => {
-    const input = { a: 10, b: 20, c: 30 };
-    const result = extractValue(input);
-    expect(result).toBe("102030"); // Values are concatenated as strings
-  });
-
-  it("should handle mixed data types (strings, numbers, booleans)", () => {
-    const input = { b: false, a: "Test", c: 42 };
-    const result = extractValue(input);
-    expect(result).toBe("Testfalse42"); // Booleans are coerced to strings
-  });
-
-  it("should handle nested objects gracefully", () => {
-    const input = { a: { nested: "value" }, b: "Beta" };
-    const result = extractValue(input);
-    expect(result).toBe("[object Object]Beta"); // Objects are coerced to "[object Object]"
-  });
-
-  it("should throw an error for null or undefined input", () => {
-    expect(() => extractValue(null)).toThrow(); // Replace with specific error handling if needed
-    expect(() => extractValue(undefined)).toThrow();
-  });
-
-  it("should handle arrays as values", () => {
-    const input = { a: [1, 2, 3], b: "Test" };
-    const result = extractValue(input);
-    expect(result).toBe("1,2,3Test"); // Arrays are coerced to their string representation
-  });
-});
-
-
-
-
-
-
-
-
-
-
-
-
-import axios from "axios";
-import { sha256 } from "js-sha256";
-
-import submitService from "../services/submit-service";
-import { getTokenChno, getUrl, keyToken } from "../utils/common/change.utils";
-
-let store: any;
-
-export const injectStore = (_store: any) => {
-  store = _store;
-};
-
-export const generateSHA256Encrypt = (
-  request: any,
-  sessionUid: string,
-  urlEndPoint: any,
-  scClientContextHeaders: any
-) => {
-  const xrtob:any = process.env.REACT_APP_XRTOB;
-  const appRef = getUrl.getChannelRefNo().applicationRefNo;
-  let xrtobWithRefNo = xrtob;
- 
-  let defaultValue = xrtob + sessionUid;
-  console.log(urlEndPoint, getUrl.getParameterByName("products"))
-  if (urlEndPoint === "resume") {
-    defaultValue += appRef;
-  } else if (urlEndPoint === "authorize" && getUrl.getParameterByName("products")) {
-    const product = JSON.parse(JSON.stringify(getUrl.getProductInfo()));
-    product.filter((item: any) => {
-      delete item.product_description;
-      delete item.company_category;
-      delete item.product_category_name;
-      return item;
-    });
-    let productInfo = "";
-    product.forEach((data: any) => {
-      const objKeys = Object.keys(data).sort();
-      objKeys.forEach((item: any) => {
-        productInfo += data[item];
-      });
-    });
-    scClientContextHeaders["products"] = sha256(xrtob + productInfo);
-  } else if (urlEndPoint === "customer") {
-    const data = getTokenChno();
-    scClientContextHeaders['tokenKeys'] = sha256(xrtob + keyToken('authorize-keys'));
-    scClientContextHeaders['personKeys'] = sha256(xrtob + keyToken('myinfo-keys'));
-
-    defaultValue += data.channelRefNo + data.code;
-  } else if (urlEndPoint === "create") {
-    defaultValue += getUrl.getChannelRefNo().channelRefNo;
-  } else if (
-    urlEndPoint === "personal" ||
-    urlEndPoint === "apply" ||
-    urlEndPoint === "ngr-offer" ||
-    urlEndPoint === "confirm" ||
-    urlEndPoint === "preserve" ||
-    urlEndPoint === "activate"
-  ) {
-    defaultValue += `${getUrl.getChannelRefNo().channelRefNo}${
-      getUrl.getChannelRefNo().applicationRefNo
-    }`;
-  } else if(urlEndPoint === 'generate') {
-    defaultValue += request.data.mobileNo + request.data.flowType + request.data.applnRefNo;
-    scClientContextHeaders["generate_otp"] = sha256(xrtob + request.data.mobileNo + request.data.flowType + request.data.applnRefNo);
-  } else if(urlEndPoint === 'verify') {
-    defaultValue += request.data['enc-otp'] + request.data['flow-type'] + request.data['key-index'] + request.data['mobile-no'] + request.data['otp-sn'] + request.data['user-id'];
-    scClientContextHeaders["verify_otp"] = sha256(xrtob + request.data['enc-otp'] + request.data['flow-type'] + request.data['key-index'] + request.data['mobile-no'] + request.data['otp-sn'] + request.data['user-id']);
-  }
-  const getToken = getUrl.getParameterByName("SSCode") || getUrl.getParameterByName('transfer-token');
-  if (getToken) {
-    defaultValue += submitService.generateUUID + getToken
-  }
-  if (urlEndPoint === "preserve") {
-    const stage = request.data.application.stage;
-    let stages = "";
-    stages += stage.page_id + stage.stage_id;
-    scClientContextHeaders["stage"] = sha256(
-      xrtobWithRefNo + appRef + getTokenChno().channelRefNo + extractValue(stages)
-    );
-  } else {
-    delete scClientContextHeaders["stage"];
-  }
-  if (urlEndPoint !== 'generate' && urlEndPoint !== 'verify' && request.data && request.data.application) {
-    const application = JSON.parse(JSON.stringify(request.data.application));
-    delete application.stage;
-    scClientContextHeaders["application"] = sha256(
-      xrtob + extractValue(application)
-    );
-  }
-
-  if (urlEndPoint !== 'generate' && urlEndPoint !== 'verify' && request.data && request.data.applicant) {
-    if (appRef) {
-      xrtobWithRefNo += appRef;
-    }
-    scClientContextHeaders["applicants"] = sha256(
-      xrtobWithRefNo + getTokenChno().channelRefNo + extractValue(request.data.applicant)
-    );
-  }
-  scClientContextHeaders["authorization"] = sha256(defaultValue);
-  if(urlEndPoint === 'generate' || urlEndPoint === 'verify') {
-    delete scClientContextHeaders["application"];
-    delete scClientContextHeaders["applicants"];
-    if(urlEndPoint === 'generate')
-    {
-      delete scClientContextHeaders["verify_otp"];
-    }
-    else if(urlEndPoint === 'verify') {
-      delete scClientContextHeaders["generate_otp"];
-    }
-  } else {
-    delete scClientContextHeaders["generate_otp"];
-    delete scClientContextHeaders["verify_otp"];
-  }
-};
-/** This method used to extract the values from payload list */
-const extractValue = (data: any) => {
-  let productInfo: string = "";
-  const objKeys = Object.keys(data).sort();
-  objKeys.forEach((item: any) => {
-    productInfo += data[item];
-  });
-  return productInfo;
-};
-
-const defaultInterceptor = () => {
-  let scClientContextHeaders: any = {
-    Channel: "MOBILE",
-    Country: "SG",
-    Language: "EN",
-    AppName: "RCWB",
-    ClientId: "MOBILE",
-    InstanceCode: "CB_SG",
-    RumDevice: "devicebrowserversion",
-    Source: "sc.com",
-    DeviceType: "Desktop",
-    AgentType: "DESKTOP_BROWSER",
-    BrowserAgent: "DESKTOP-BROWSER",
-    IPAddress: "",
-  };
-  
-  let abortController = new AbortController();
-  const timeout = setTimeout(() => {
-    abortController.abort();
-  }, 180000);
-
-  axios.interceptors.request.use(
-    (request) => {
-      let currentEndpoint: any = request.url && request.url.split("/");
-      let uUid = submitService.generateUUID;
-      let header: any = {
-        "Content-Type": "application/json;charset=UTF-8",
-      };
-      if (process.env.REACT_APP_ENVIRONMENT === "uat") {
-        header["Env"] = process.env.REACT_APP_ENVIRONMENT; 
-      }
-      scClientContextHeaders["reqId"] = uUid;
-      if (store.getState().auth.sessionUid !== null) {
-        const sessionUid = store.getState().auth.sessionUid;
-        const urlEndPoint = currentEndpoint[currentEndpoint.length - 1];
-        generateSHA256Encrypt(
-          request,
-          sessionUid,
-          urlEndPoint,
-          scClientContextHeaders
-        );
-        scClientContextHeaders["sessionUID"] = sessionUid;
-      }
-      if (currentEndpoint[currentEndpoint.length - 1] === "customer") {
-        header["requestId"] = uUid;
-
-        if(getUrl.getParameterByName("isMyInfoVirtualNRIC")) {
-          header["virtual"] = "YES";
-        }
-      }
-      if (currentEndpoint[currentEndpoint.length - 2] === "ibank") {
-        const tokenLabel = getUrl.getParameterByName('transfer-token') ? 'transfer-token' : 'code';
-        header[tokenLabel] = getUrl.getParameterByName("SSCode") || getUrl.getParameterByName('transfer-token');
-      }
-      request.headers["SC-CLIENT-CONTEXT"] = JSON.stringify(
-        scClientContextHeaders
-      );
-
-      request.headers.set(header);
-
-      return {
-        ...request,
-        signal: abortController.signal,
-      };
-    }
-  );
-
-  axios.interceptors.response.use((res) => {
-    clearTimeout(timeout);
-    return res;
-  });
-};
-
-export default defaultInterceptor;
