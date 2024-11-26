@@ -143,30 +143,7 @@ const ThankYou = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // useEffect(() => {
-  //   if (otpSuccessSelector) {
-  //     activateCard();
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [otpSuccessSelector]);
-  // const setSTPData = (prevValue: any) => {
-  //   if (prevValue.isStp && prevValue.productCategory) {
-  //     if (prevValue.productCategory === "CC") {
-  //       prevValue.feedbackUrl =
-  //         thankyou[prevValue.thankyouFeedback]["url_prefix"] +
-  //         thankyou[prevValue.thankyouFeedback]["cc"] +
-  //         thankyou[prevValue.thankyouFeedback]["url_suffix"] +
-  //         applicationReferenceNo!;
-  //     } else if (prevValue.productCategory === "PL") {
-  //       prevValue.feedbackUrl =
-  //         thankyou[prevValue.thankyouFeedback]["url_prefix"] +
-  //         thankyou[prevValue.thankyouFeedback]["pl"] +
-  //         thankyou[prevValue.thankyouFeedback]["url_suffix"] +
-  //         applicationReferenceNo!;
-  //     }
-  //   }
-  //   return prevValue;
-  // };
+ 
 
   const submitForm = (event:React.FormEvent<EventTarget>) => {
     if (
@@ -196,30 +173,7 @@ const ThankYou = () => {
   const showOTPPopup = () => {
     navigate("/otp");
   };
-  // const goToIBanking = (event: React.FormEvent<EventTarget>) => {
-  //   if (getUrl.getParameterByName("source") === "scm") {
-  //     //Ibanking redirection for app
-  //     window.location.href = `${process.env.REACT_APP_IBANKING_SC_MOBILE}`;
-  //   }  else if(getUrl.getUpdatedStage().ccplChannel=== "MBNK") {
-  //     const redirectUrl =  `${process.env.REACT_APP_IBANKING_SC_MOBILE_TRANSFER}`;
-  //     window.location.href = redirectUrl;
-  //   }else {
-  //     redirectingToIbanking();
-  //   }
-  //   event.preventDefault();
-  // };
-  // const activateCard = () => {
-  //   setShowContinueWithoutActivationMsg(false);
-  //   setContinueWithoutActivationUI(false);
-  //   setShowerrorUI(false);
-  //   dispatch(activateDigitalCard(applicationDetails)).then((result: any) => {
-  //     if (result.status && result.status.toUpperCase() === "SUCCESS") {
-  //       setCardActivationSuccessUI(true);
-  //     } else {
-  //       setShowerrorUI(true);
-  //     }
-  //   });
-  // };
+  
   return (
     <>
       {applicationDetails && (
