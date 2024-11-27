@@ -1,261 +1,164 @@
-describe("Stages Slice", () => {
-  let initialState: StageSliceModel;
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { dispatchLoader } from "../../../services/common-service";
+import "./myinfo-singpass-login.scss";
 
-  beforeEach(() => {
-    initialState = {
-      stages: [],
-      myinfoResponse: {},
-      ibankingResponse: {},
-      userInput: {
-        applicants: {},
-        missingFields: {},
-      },
-      updatedStageInputs: [],
-      taxCustom: {
-        toggle: false,
-        addTaxToggle: false,
-      },
-      conditionalFields: {
-        newFields: {},
-        removedFields: {},
-      },
-      myinfoMissingFields: null,
-      myinfoMissingLogicFields: null,
-      dependencyFields: {
-        workType: null,
-      },
-      currentStage: null,
-      journeyType: null,
-      otpOpen: false,
-      otpTrigger: true,
-      otpResume: false,
-      isDocument: false,
-      lastStageId: null,
-      otpSuccess: false,
-      isDocumentUpload: false,
-      ccplChannel: null,
-    };
+const MyinfoSingpassLogin = () => {
+  const authorizeSelector = useSelector(
+    (state: any) => state.authorize.authorize
+  );
+  const [singpassCredential, setsingpassCredential] = useState({
+    nric: "",
+    password: "",
   });
+  const dispatch = useDispatch();
+  const [isProduction, setIsProduction] = useState(false);
+  const [isVirtualSingPass, setIsVirtualSingPass] = useState(false);
 
-  describe("mergeLastStageInputs", () => {
-    it("should merge userInput.applicants into updatedStageInputs when stage exists and applicants are non-empty", () => {
-      initialState.updatedStageInputs = [
-        { stageId: "mock-stage-id", applicants: { name: "John" } },
-      ];
-      initialState.userInput.applicants = { name: "Doe", age: 30 };
+  useEffect(() => {
+    if (`${process.env.REACT_APP_PRODUCTION}` !== "Y") {
+      setIsProduction(true);
+    } else {
+      dispatch(dispatchLoader(true));
+      doRealSingpassLogin();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      const action = stagesAction.mergeLastStageInputs("mock-stage-id");
-      const state = stagesReducer(initialState, action);
+  const changeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setsingpassCredential((prevUser: any) => {
+      prevUser[event.target.name] = event.target.value;
+      return { ...prevUser };
+    });
+  };
 
-      expect(state.updatedStageInputs[0].applicants).toEqual({
-        name: "Doe",
-        age: 30,
+  const blurHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.validity.valid) {
+      setsingpassCredential((prevUser: any) => {
+        prevUser[event.target.name] = event.target.value;
+        return { ...prevUser };
       });
-      expect(state.userInput.applicants).toEqual({});
-    });
+    }
+  };
 
-    it("should copy applicants from updatedStageInputs to userInput when stage exists and applicants are empty", () => {
-      initialState.updatedStageInputs = [
-        { stageId: "mock-stage-id", applicants: { name: "John" } },
-      ];
-      initialState.userInput.applicants = {};
-
-      const action = stagesAction.mergeLastStageInputs("mock-stage-id");
-      const state = stagesReducer(initialState, action);
-
-      expect(state.userInput.applicants).toEqual({ name: "John" });
-    });
-
-    it("should clear userInput.applicants when stage does not exist", () => {
-      initialState.updatedStageInputs = [
-        { stageId: "other-stage-id", applicants: { name: "John" } },
-      ];
-      initialState.userInput.applicants = { name: "Doe", age: 30 };
-
-      const action = stagesAction.mergeLastStageInputs("mock-stage-id");
-      const state = stagesReducer(initialState, action);
-
-      expect(state.userInput.applicants).toEqual({});
-    });
-  });
-
-  describe("mergeBasicInputs", () => {
-    it("should merge applicants correctly when account_currency_9_a_1 is not set", () => {
-      initialState.updatedStageInputs = [
-        {
-          stageId: "ssf-1",
-          applicants: { account_currency_9_a_1: "USD", otherField: "value" },
-        },
-      ];
-      initialState.userInput.applicants = {};
-
-      const action = stagesAction.mergeBasicInputs();
-      const state = stagesReducer(initialState, action);
-
-      expect(state.updatedStageInputs[0].applicants).not.toHaveProperty(
-        "account_currency_9_a_1"
-      );
-      expect(state.userInput.applicants).toEqual({
-        otherField: "value",
-      });
-    });
-
-    it("should update applicants when account_currency_9_a_1 differs", () => {
-      initialState.updatedStageInputs = [
-        {
-          stageId: "ssf-1",
-          applicants: { account_currency_9_a_1: "USD", otherField: "value" },
-        },
-      ];
-      initialState.userInput.applicants = { account_currency_9_a_1: "SGD" };
-
-      const action = stagesAction.mergeBasicInputs();
-      const state = stagesReducer(initialState, action);
-
-      expect(state.updatedStageInputs[0].applicants.account_currency_9_a_1).toBe(
-        "SGD"
-      );
-      expect(state.userInput.applicants).toEqual({
-        account_currency_9_a_1: "SGD",
-        otherField: "value",
-      });
-    });
-
-    it("should handle multiple stages and merge applicants accordingly", () => {
-      initialState.updatedStageInputs = [
-        {
-          stageId: "ssf-1",
-          applicants: { account_currency_9_a_1: "USD", fieldA: "valueA" },
-        },
-        {
-          stageId: "ssf-2",
-          applicants: { fieldB: "valueB" },
-        },
-      ];
-      initialState.userInput.applicants = { account_currency_9_a_1: "SGD" };
-
-      const action = stagesAction.mergeBasicInputs();
-      const state = stagesReducer(initialState, action);
-
-      expect(state.updatedStageInputs[0].applicants.account_currency_9_a_1).toBe(
-        "SGD"
-      );
-      expect(state.userInput.applicants).toEqual({
-        account_currency_9_a_1: "SGD",
-        fieldA: "valueA",
-        fieldB: "valueB",
-      });
-    });
-  });
-});
-
-..................
-
-
-
-import { createSlice } from "@reduxjs/toolkit";
-import { StageSliceModel} from "../model/common-model"; 
-
-const initialState: StageSliceModel = {
-    stages: [],
-    myinfoResponse: {},
-    ibankingResponse: {},
-    userInput: {
-        applicants: {},
-        missingFields: {}
-    },
-    updatedStageInputs: [],
-
-    taxCustom: {
-        toggle: false,
-        addTaxToggle: false
-    },
-    conditionalFields: {
-        newFields: {},
-        removedFields: {}
-    },
-    myinfoMissingFields: null,
-    myinfoMissingLogicFields: null,
-    dependencyFields: {
-        workType: null
-    },
-    currentStage: null,
-    journeyType: null,
-    otpOpen: false,
-    otpTrigger: true, 
-    otpResume: false,   
-    isDocument : false,
-    lastStageId: null,
-    otpSuccess: false,
-    isDocumentUpload:false,
-    ccplChannel: null
-}
-const stages = createSlice({
-  name: "stages",
-  initialState,
-  reducers: {
-   
-   
-    mergeLastStageInputs(state, action) {
-      const stageIndex = state.updatedStageInputs.findIndex(
-        (ref: any) => ref && ref.stageId === action.payload
-      );
-      if (stageIndex > -1 && Object.keys(state.userInput.applicants).length > 0) {
-        for (let key in state.userInput.applicants) {
-          if (
-            state.userInput.applicants[key] !==
-            state.updatedStageInputs[stageIndex].applicants[key]
-          ) {
-            state.updatedStageInputs[stageIndex].applicants[key] =
-              state.userInput.applicants[key];
-          }
-        }
-        state.userInput.applicants = {};
-      } else if(stageIndex > -1) {
-        state.userInput.applicants = {};
-        state.userInput.applicants = state.updatedStageInputs[stageIndex].applicants;
+  const signPassHandler = (data?: string) => {
+    if (data === "virtual") {
+      if (
+        singpassCredential.nric !== "" &&
+        singpassCredential.password !== ""
+      ) {
+        const hostUrl = `${process.env.REACT_APP_HOST_URL}`;
+        dispatch(dispatchLoader(true));
+        let myinfoCallbackUrl = `#${
+          process.env.REACT_APP_RTOB_CALLBACK_URL + singpassCredential.nric
+        }`;
+          window.location.href = hostUrl + myinfoCallbackUrl;       
       } else {
-        state.userInput.applicants = {};
+        setsingpassCredential({
+          nric: "",
+          password: "",
+        });
       }
-      // state.userInput.applicants = {};
-    },
-    mergeBasicInputs(state) {
-      const stageIds = ["ssf-1", "ssf-2"];
-      let isAccount_currency = false;
-      stageIds.forEach((stage: string) => {
-        const stageApplicant = state.updatedStageInputs.find(
-          (ref: any) => ref && ref.stageId === stage
-        );
-        if (!state.userInput.applicants["account_currency_9_a_1"]) {
-          if (stageApplicant) {
-            isAccount_currency = true;
-            delete stageApplicant.applicants["account_currency_9_a_1"];
-          }
-          delete state.userInput.applicants["account_currency_9_a_1"];
-        } else if (
-          stageApplicant &&
-          state.userInput.applicants["account_currency_9_a_1"] !==
-            stageApplicant.applicants["account_currency_9_a_1"]
-        ) {
-          stageApplicant.applicants["account_currency_9_a_1"] =
-            state.userInput.applicants["account_currency_9_a_1"];
-        }
-        if (stageApplicant && !isAccount_currency) {
-          state.userInput.applicants = {
-            ...state.userInput.applicants,
-            ...stageApplicant.applicants,
-          };
-        }
-      });
-    },
-    
-  },
-});
+    } else {
+      dispatch(dispatchLoader(true));
+      doRealSingpassLogin();
+    }
+  };
 
-export const stagesAction = stages.actions;
+  const doRealSingpassLogin = () => {
+    if (authorizeSelector && authorizeSelector.attributes[0]) {
+      const {
+        client_id,
+        scope,
+        purpose_id,
+        code_challenge,
+        code_challenge_method,
+        response_type,
+        redirect_uri,
+      } = authorizeSelector.attributes[0];
 
-export default stages;
+      const authorizeUrl =
+        process.env.REACT_APP_SINGPASS_URL +
+        "?client_id=" +
+        client_id +
+        "&scope=" +
+        scope +
+        "&purpose_id=" +
+        purpose_id +
+        "&code_challenge=" +
+        code_challenge +
+        "&code_challenge_method=" +
+        code_challenge_method +
+        "&response_type=" +
+        response_type +
+        "&redirect_uri=" +
+        redirect_uri;
+      window.location.href = authorizeUrl;
+    }
+  };
 
+  const virtualSingPass = () => {
+    setIsVirtualSingPass(true);
+  };
+  return (
+    <>
+      {isProduction && (
+        <div className={`singpass-modal ${!isVirtualSingPass ? "auth" : ""}`}>
+          {!isVirtualSingPass ? (
+            <div>
+              <div className="singpass-model__auth">
+                <div className="singpass-model__question">
+                  Do you want to proceed with Virtual Singpass or Singpass?
+                </div>
+                <div className="singpass-model__btn">
+                  <button type="button" onClick={virtualSingPass}>
+                    Virtual Singpass
+                  </button>
+                  <button type="button" onClick={() => signPassHandler()}>
+                    Real Singpass
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="singpass-modal__body">
+              <form name="singpassLoginForm">
+                <div className="singpass-modal__header">Log in</div>
+                <div className="singpass-modal__form-group">
+                  <div className="singpass-modal__credentials">
+                    <input
+                      type="text"
+                      placeholder="Singpass ID"
+                      name="nric"
+                      onBlur={blurHandler.bind(this)}
+                      onChange={changeHandler.bind(this)}
+                      value={singpassCredential.nric}
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      name="password"
+                      onBlur={blurHandler.bind(this)}
+                      onChange={changeHandler.bind(this)}
+                      value={singpassCredential.password}
+                    />
+                  </div>
+                  <div className="singpass-modal__submit">
+                    <button
+                      type="button"
+                      onClick={() => signPassHandler("virtual")}
+                    >
+                      Log in
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+};
 
-
-
+export default MyinfoSingpassLogin;
