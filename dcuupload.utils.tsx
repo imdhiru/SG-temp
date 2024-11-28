@@ -1,3 +1,41 @@
+ it('should update document properties correctly when documentStatus is UPLOADED or UPLOADING', async () => {
+    const selectedDocumentList = [
+      {
+        uploaded_documents: [
+          { documentStatus: 'UPLOADED', docId: '', document_name: '' },
+          { documentStatus: 'NOT_UPLOADED', docId: '', document_name: '' },
+        ],
+      },
+    ];
+
+    const docUploadResponse = {
+      docId: '12345',
+      documentStatus: 'UPLOADED',
+      document_name: 'Sample Document',
+    };
+
+    const result = await fileuploadSuccess(selectedDocumentList, docUploadResponse)();
+
+    // Verify the updated properties
+    expect(result).toEqual({
+      documentStatus: 'Accepted',
+      docId: '12345',
+      document_name: 'Sample Document',
+    });
+
+    // Verify the original list was updated
+    expect(selectedDocumentList[0].uploaded_documents[0].docId).toBe('12345');
+    expect(selectedDocumentList[0].uploaded_documents[0].documentStatus).toBe('Accepted');
+    expect(selectedDocumentList[0].uploaded_documents[0].document_name).toBe('Sample Document');
+
+    // Verify no changes were made to non-matching documents
+    expect(selectedDocumentList[0].uploaded_documents[1].docId).toBe('');
+    expect(selectedDocumentList[0].uploaded_documents[1].documentStatus).toBe('NOT_UPLOADED');
+  });
+
+
+
+
 import { KeyWithAnyModel } from "../../../utils/model/common-model";
 import md5 from "md5";
 import documentValidation from "../../../assets/_json/document-upload.json";
