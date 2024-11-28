@@ -1,3 +1,153 @@
+import { filterDocuments, documentUploadRequest } from "./yourFileName";
+
+jest.mock("axios");
+
+describe("Utility Functions", () => {
+  describe("filterDocuments", () => {
+    it("should correctly process documents and set finalDocument properties", () => {
+      const mockDocumentList = [
+        {
+          document_list: [
+            {
+              document_category_code: "DOC01",
+              document_options: [
+                {
+                  document_types: [
+                    {
+                      document_type_code: "T0308",
+                      uploaded_documents: [
+                        {
+                          document_id: "123.pdf",
+                          document_status: "UPLOADED",
+                          document_sequence_number: 1,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const result = filterDocuments(mockDocumentList);
+
+      expect(result.finalDocument.finalDocumentList).toHaveLength(1);
+      expect(result.finalDocument.finalDocumentList[0]).toEqual(
+        expect.objectContaining({
+          docId: "123",
+          country: "SG",
+          documentStatus: "Accepted",
+          applicantId: 1,
+          imageOrder: 1,
+        })
+      );
+      expect(result.finalDocument.optionList.docOption).toEqual(["T0308"]);
+      expect(result.finalDocument.optionList.optionsSelected.options).toEqual([
+        expect.objectContaining({
+          documentCategoryCode: "DOC01",
+          documentOptionSequence: 1,
+          documentTypeCode: "T0308",
+        }),
+      ]);
+      expect(result[0].isSignatureDoc).toBe(true);
+    });
+
+    it("should handle documents without uploaded documents gracefully", () => {
+      const mockDocumentList = [
+        {
+          document_list: [
+            {
+              document_category_code: "DOC01",
+              document_options: [
+                {
+                  document_types: [
+                    {
+                      document_type_code: "T0308",
+                      uploaded_documents: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const result = filterDocuments(mockDocumentList);
+
+      expect(result.finalDocument.finalDocumentList).toHaveLength(0);
+      expect(result.finalDocument.optionList.docOption).toEqual([]);
+    });
+
+    it("should exclude rejected documents from the finalDocument list", () => {
+      const mockDocumentList = [
+        {
+          document_list: [
+            {
+              document_category_code: "DOC01",
+              document_options: [
+                {
+                  document_types: [
+                    {
+                      document_type_code: "T0308",
+                      uploaded_documents: [
+                        { document_id: "123.pdf", document_status: "Rejected" },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const result = filterDocuments(mockDocumentList);
+
+      expect(result.finalDocument.finalDocumentList).toHaveLength(0);
+    });
+  });
+
+  describe("documentUploadRequest", () => {
+    const mockAxios = {
+      post: jest.fn(),
+    };
+
+    const url = "https://example.com/upload";
+    const data = { key: "value" };
+    const options = { headers: { "Content-Type": "application/json" } };
+
+    it("should resolve when API call succeeds", async () => {
+      const mockResponse = { data: "success" };
+      mockAxios.post.mockResolvedValue(mockResponse);
+
+      const documentUploader = documentUploadRequest(mockAxios, url, data, options);
+      const response = await documentUploader();
+
+      expect(mockAxios.post).toHaveBeenCalledWith(url, data, options);
+      expect(response).toEqual(mockResponse);
+    });
+
+    it("should reject when API call fails", async () => {
+      const mockError = new Error("Request failed");
+      mockAxios.post.mockRejectedValue(mockError);
+
+      const documentUploader = documentUploadRequest(mockAxios, url, data, options);
+
+      await expect(documentUploader()).rejects.toThrow("Request failed");
+    });
+  });
+});
+
+
+
+
+
+========================================================
+
+
 describe("Utility Functions", () => {
   describe("generateUUID", () => {
     it("should return a UUID when implemented", () => {
