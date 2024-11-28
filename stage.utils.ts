@@ -1,3 +1,153 @@
+import { stateUrl, getStageName } from "./yourFile"; // Adjust the import path
+import { store } from "../store"; // Mock store path
+import CONSTANTS from "../constants"; // Mock constants path
+
+jest.mock("../store", () => ({
+  store: {
+    getState: jest.fn(),
+  },
+}));
+
+jest.mock("../constants", () => ({
+  STAGE_NAMES: {
+    SSF_1: "SSF_1",
+    SSF_2: "SSF_2",
+    BD_2: "BD_2",
+    BD_3: "BD_3",
+    DOC: "DOC",
+    AD_1: "AD_1",
+    AD_2: "AD_2",
+    ACD: "ACD",
+    RP: "RP",
+    FFD_1: "FFD_1",
+    LD_1: "LD_1",
+  },
+  STATE_URLS: {
+    SUPER_SHORT_FORM: "super-short-form",
+    MYINFO_DETAILS: "myinfo-details",
+    PERSONAL_DETAILS: "personal-details",
+    EMPLOYMENT: "employment",
+    DOCUMENTS: "documents",
+    TAX_DETAILS: "tax-details",
+    CREDIT_CARD_DETAILS: "credit-card-details",
+    LOAN_DETAILS: "loan-details",
+    ADDITIONAL_DATA: "additional-data",
+    CREDIT_LIMIT: "credit-limit",
+    REVIEW: "review",
+    THANKYOU: "thank-you",
+    LOAN_CALCULATOR: "loan-calculator",
+  },
+}));
+
+jest.mock("../utils/helpers", () => ({
+  getProductCategory: jest.fn(),
+  checkProductDetails: jest.fn(),
+  authenticateType: jest.fn(),
+}));
+
+import { getProductCategory, checkProductDetails, authenticateType } from "../utils/helpers";
+
+describe("stateUrl Function", () => {
+  beforeEach(() => {
+    (store.getState as jest.Mock).mockReturnValue({
+      stages: {
+        stages: [
+          {
+            stageInfo: {
+              products: "mockProducts",
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("should set the correct URL for a valid stage", () => {
+    stateUrl(CONSTANTS.STAGE_NAMES.SSF_1);
+    expect(window.history.replaceState).toHaveBeenCalledWith("", "", "/super-short-form");
+  });
+
+  it("should default to SUPER_SHORT_FORM for an invalid stage", () => {
+    stateUrl("INVALID_STAGE");
+    expect(window.history.replaceState).toHaveBeenCalledWith("", "", "/super-short-form");
+  });
+
+  it("should return additional data URL for AD_2 with CC product", () => {
+    (getProductCategory as jest.Mock).mockReturnValue("CC");
+    stateUrl(CONSTANTS.STAGE_NAMES.AD_2);
+    expect(window.history.replaceState).toHaveBeenCalledWith("", "", "/credit-card-details");
+  });
+});
+
+describe("getStageName Function", () => {
+  beforeEach(() => {
+    (store.getState as jest.Mock).mockReturnValue({
+      stages: {
+        stages: [
+          {
+            stageInfo: {
+              products: "mockProducts",
+              applicants: {
+                auth_mode_a_1: "IX",
+                credit_limit_consent_a_1: "N",
+                last_updated_credit_limit_date_flag: "N",
+              },
+              applicant_documents: [{ id: 1 }],
+            },
+          },
+        ],
+      },
+    });
+
+    (getProductCategory as jest.Mock).mockReturnValue("PL");
+    (checkProductDetails as jest.Mock).mockReturnValue(false);
+    (authenticateType as jest.Mock).mockReturnValue("manual");
+  });
+
+  it("should handle ETC applicationJourney and AD_1 stage", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.AD_1, "ETC");
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.DOC);
+  });
+
+  it("should handle ETC applicationJourney and AD_2 stage for PL product", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.AD_2, "ETC");
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.LD_1);
+  });
+
+  it("should handle RP stage with credit_limit_consent_a_1 as 'N'", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.RP, null);
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.AD_2);
+  });
+
+  it("should return BD_1 for SSF_2 without applicationJourney", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.SSF_2, null);
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.SSF_1);
+  });
+
+  it("should handle invalid stages gracefully", () => {
+    const result = getStageName("INVALID_STAGE", null);
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.SSF_1);
+  });
+
+  it("should handle LD_1 stage for manual flow", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.LD_1, "ETC");
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.BD_1);
+  });
+
+  it("should fallback to BD_1 for undefined conditions", () => {
+    const result = getStageName(CONSTANTS.STAGE_NAMES.DOC, "NTC");
+    expect(result).toBe(CONSTANTS.STAGE_NAMES.BD_3);
+  });
+});
+
+
+
+
+
+
+
+
+
 import { CONSTANTS } from "../../../utils/common/constants";
 import { store } from "../../../utils/store/store";
 import {
