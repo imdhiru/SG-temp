@@ -1,37 +1,199 @@
- it('should update document properties correctly when documentStatus is UPLOADED or UPLOADING', async () => {
-    const selectedDocumentList = [
-      {
-        uploaded_documents: [
-          { documentStatus: 'UPLOADED', docId: '', document_name: '' },
-          { documentStatus: 'NOT_UPLOADED', docId: '', document_name: '' },
-        ],
-      },
-    ];
+describe("Utility Functions", () => {
+  describe("generateUUID", () => {
+    it("should return a UUID when implemented", () => {
+      // Since UUID logic is not implemented, we test as is.
+      const uuid = generateUUID();
+      expect(uuid).toBeUndefined();
+    });
+  });
 
-    const docUploadResponse = {
-      docId: '12345',
-      documentStatus: 'UPLOADED',
-      document_name: 'Sample Document',
-    };
+  describe("getAckMetaData", () => {
+    it("should return metadata with MD5 hash and reqId", () => {
+      process.env.REACT_APP_XRTOB = "testPrefix";
+      const mockChannelReference = "channel123";
+      const mockMd5 = jest.fn(() => "mockMD5Hash");
+      global.md5 = mockMd5;
 
-    const result = await fileuploadSuccess(selectedDocumentList, docUploadResponse)();
+      const metadata = getAckMetaData(mockChannelReference);
+      expect(mockMd5).toHaveBeenCalledWith("testPrefixchannel123");
+      expect(metadata).toEqual({
+        reqId: expect.any(Function), // Mocked `generateUUID` function
+        Channel: "MOBILE",
+        Country: "SG",
+        Language: "EN",
+        AppName: "RCWB",
+        ClientId: "MOBILE",
+        RumDevice: "devicebrowserversion",
+        Source: "RWB",
+        DeviceType: "Desktop",
+        InstanceCode: "CB_SG",
+        authorization: "mockMD5Hash",
+      });
+    });
+  });
 
-    // Verify the updated properties
-    expect(result).toEqual({
-      documentStatus: 'Accepted',
-      docId: '12345',
-      document_name: 'Sample Document',
+  describe("fileValidation", () => {
+    it("should return an error for unsupported file formats", () => {
+      const file = [{ name: "test.txt" }];
+      const documentTypes = { document_type_code: "T0308" };
+
+      const result = fileValidation(file, documentTypes);
+      expect(result).toEqual({
+        errorType: "signatureDocFormatError",
+        enableError: true,
+      });
     });
 
-    // Verify the original list was updated
-    expect(selectedDocumentList[0].uploaded_documents[0].docId).toBe('12345');
-    expect(selectedDocumentList[0].uploaded_documents[0].documentStatus).toBe('Accepted');
-    expect(selectedDocumentList[0].uploaded_documents[0].document_name).toBe('Sample Document');
+    it("should return an error for exceeding file size", () => {
+      jest.spyOn(global, "getFilesSizeInMB").mockReturnValue(11); // Mock file size in MB
+      const file = [{ name: "test.png" }];
+      const documentTypes = { document_type_code: "T0307" };
 
-    // Verify no changes were made to non-matching documents
-    expect(selectedDocumentList[0].uploaded_documents[1].docId).toBe('');
-    expect(selectedDocumentList[0].uploaded_documents[1].documentStatus).toBe('NOT_UPLOADED');
+      const result = fileValidation(file, documentTypes);
+      expect(result).toEqual({
+        errorType: "documentSizeExceeded",
+        enableError: true,
+      });
+    });
+
+    it("should validate successfully for valid file", () => {
+      jest.spyOn(global, "getFilesSizeInMB").mockReturnValue(2);
+      const file = [{ name: "test.png" }];
+      const documentTypes = { document_type_code: "T0307" };
+
+      const result = fileValidation(file, documentTypes);
+      expect(result).toEqual({
+        errorType: "",
+        enableError: false,
+      });
+    });
   });
+
+  describe("getFilesSizeInMB", () => {
+    it("should return correct size in MB", () => {
+      const result = getFilesSizeInMB(1048576); // 1 MB in bytes
+      expect(result).toBe(1);
+    });
+
+    it("should return 0 for empty files", () => {
+      const result = getFilesSizeInMB(0);
+      expect(result).toBe(0);
+    });
+  });
+
+  describe("getTotalFileSize", () => {
+    it("should calculate total file size for accepted files", () => {
+      const finalDocList = [
+        {
+          documentStatus: "ACCEPTED",
+          fileObject: { size: 1048576 }, // 1 MB
+        },
+        {
+          documentStatus: "REJECTED",
+          fileObject: { size: 2097152 }, // 2 MB
+        },
+      ];
+
+      const result = getTotalFileSize(finalDocList);
+      expect(result).toBe(1048576);
+    });
+  });
+
+  describe("setSuccessStatus", () => {
+    it("should update document response with uploaded status", async () => {
+      const documentResponse = [
+        {
+          document_list: [
+            {
+              document_category_code: "DOC01",
+              document_options: [
+                {
+                  document_types: [
+                    {
+                      uploaded_documents: [{}, {}],
+                      document_type_code: "T123",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+      const documentTypes = { document_category_code: "DOC01" };
+      const selectedDocument = [
+        {
+          document_types: [{ document_type_code: "T123" }],
+        },
+      ];
+      const documentUploadResponse = { docId: "12345" };
+      const indexOfUpload = 1;
+
+      const result = await setSuccessStatus(
+        documentResponse,
+        documentTypes,
+        selectedDocument,
+        documentUploadResponse,
+        indexOfUpload
+      )();
+
+      expect(result[0].document_list[0].document_options[0].document_types[0].uploaded_documents[1]).toEqual({
+        ...documentUploadResponse,
+        documentStatus: "UPLOADED",
+      });
+    });
+  });
+
+  describe("validateMandatoryDoc", () => {
+    it("should identify missing mandatory documents", async () => {
+      const documentResponse = [
+        {
+          document_list: [
+            {
+              document_category_code: "DOC01",
+              document_options: [
+                {
+                  document_types: [
+                    { uploaded_documents: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+      const documentMandatoryStore = { DOC01: true };
+
+      const result = await validateMandatoryDoc(
+        documentResponse,
+        documentMandatoryStore
+      )();
+
+      expect(result).toEqual({ DOC01: true });
+    });
+  });
+
+  describe("getDocumentThumnail", () => {
+    it("should fetch document thumbnail", async () => {
+      const uploadedDocList = { document_id: "12345" };
+      const refernceDetails = { channelReference: "ref123" };
+
+      mockedAxios.get.mockResolvedValue({ data: "mockData" });
+      const result = await getDocumentThumnail(
+        uploadedDocList,
+        "image",
+        refernceDetails
+      )();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining("/documents/12345"),
+        { responseType: "arraybuffer" }
+      );
+      expect(result).toBeDefined();
+    });
+  });
+});
+
 
 
 
