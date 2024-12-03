@@ -1,3 +1,169 @@
+import { render, screen, fireEvent } from "@testing-library/react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import MultiSelectionBox from "./MultiSelectionBox";
+import userEvent from "@testing-library/user-event";
+
+// Mock store
+const mockStore = configureStore([]);
+const initialState = {
+  lov: {
+    lov: [
+      { label: "fieldName", value: [{ CODE_VALUE: "1", CODE_DESC: "Option 1", checked: false }] },
+    ],
+  },
+  fielderror: { error: false },
+  stages: {
+    myinfoResponse: null,
+    stages: [{ stageId: "ssf-1", stageInfo: { applicants: {} } }],
+    userInput: { applicants: {} },
+  },
+};
+const store = mockStore(initialState);
+
+// Mock props
+const mockProps = {
+  data: {
+    logical_field_name: "fieldName",
+    rwb_label_name: "Test Label",
+    editable: false,
+    max_selects: "3",
+    mandatory: "Yes",
+  },
+  handleCallback: jest.fn(),
+};
+
+describe("MultiSelectionBox Component", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("renders without crashing", () => {
+    render(
+      <Provider store={store}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+    expect(screen.getByLabelText(/Test Label/i)).toBeInTheDocument();
+  });
+
+  test("displays error message if errors exist", () => {
+    const errorState = {
+      ...initialState,
+      fielderror: { error: true },
+    };
+    const errorStore = mockStore(errorState);
+
+    render(
+      <Provider store={errorStore}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+    expect(screen.getByText(/Please enter Test Label/i)).toBeInTheDocument();
+  });
+
+  test("handles dropdown click to show options", () => {
+    render(
+      <Provider store={store}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+
+    const dropdownField = screen.getByPlaceholderText(/Test Label/i);
+    fireEvent.click(dropdownField);
+
+    expect(screen.getByText(/Option 1/i)).toBeInTheDocument();
+  });
+
+  test("handles option selection", () => {
+    render(
+      <Provider store={store}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+
+    const dropdownField = screen.getByPlaceholderText(/Test Label/i);
+    fireEvent.click(dropdownField);
+
+    const optionCheckbox = screen.getByLabelText(/Option 1/i);
+    fireEvent.click(optionCheckbox);
+
+    expect(optionCheckbox).toBeChecked();
+  });
+
+  test("handles removing selected values", () => {
+    const customState = {
+      ...initialState,
+      stages: {
+        ...initialState.stages,
+        stages: [
+          {
+            stageId: "ssf-1",
+            stageInfo: { applicants: { fieldName: "1" } },
+          },
+        ],
+      },
+    };
+    const customStore = mockStore(customState);
+
+    render(
+      <Provider store={customStore}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+
+    const selectedLabel = screen.getByText(/Option 1/i);
+    const closeButton = selectedLabel.nextSibling;
+    fireEvent.click(closeButton);
+
+    expect(selectedLabel).not.toBeInTheDocument();
+  });
+
+  test("displays max selection warning", () => {
+    const customProps = {
+      ...mockProps,
+      data: {
+        ...mockProps.data,
+        max_selects: "1",
+      },
+    };
+
+    render(
+      <Provider store={store}>
+        <MultiSelectionBox {...customProps} />
+      </Provider>
+    );
+
+    const dropdownField = screen.getByPlaceholderText(/Test Label/i);
+    fireEvent.click(dropdownField);
+
+    const optionCheckbox = screen.getByLabelText(/Option 1/i);
+    fireEvent.click(optionCheckbox);
+
+    expect(screen.getByText(/You have selected maximum options/i)).toBeInTheDocument();
+  });
+
+  test("handles search filtering", async () => {
+    render(
+      <Provider store={store}>
+        <MultiSelectionBox {...mockProps} />
+      </Provider>
+    );
+
+    const dropdownField = screen.getByPlaceholderText(/Test Label/i);
+    fireEvent.click(dropdownField);
+
+    const searchBox = screen.getByPlaceholderText(/Search/i);
+    await userEvent.type(searchBox, "Option 1");
+
+    expect(screen.getByText(/Option 1/i)).toBeInTheDocument();
+  });
+});
+
+
+
+
+
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
