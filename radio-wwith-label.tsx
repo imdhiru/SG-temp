@@ -1,3 +1,174 @@
+
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import { RadioWithLabel } from "./radio-with-label";
+
+const mockStore = configureStore([]);
+
+describe("RadioWithLabel Component", () => {
+  let store: any;
+  let props: any;
+
+  beforeEach(() => {
+    store = mockStore({
+      stages: {
+        stages: [
+          {
+            stageId: "test-stage",
+            stageInfo: {
+              applicants: {
+                test_field_a_1: "test_value",
+              },
+              products: [],
+            },
+          },
+        ],
+        userInput: {
+          applicants: {
+            test_field_a_1: "test_value",
+          },
+        },
+        updatedStageInputs: [],
+        taxCustom: { toggle: false },
+      },
+      lov: { lov: [] },
+      fielderror: { error: false },
+      bancaList: { bancaDetails: {} },
+    });
+
+    props = {
+      data: {
+        logical_field_name: "test_field",
+        rwb_label_name: "Test Label",
+        editable: false,
+        info_tooltips: "Yes",
+      },
+      handleCallback: jest.fn(),
+      handleFieldDispatch: jest.fn(),
+    };
+  });
+
+  it("should render the component with required elements", () => {
+    render(
+      <Provider store={store}>
+        <RadioWithLabel {...props} />
+      </Provider>
+    );
+
+    // Check label exists
+    expect(screen.getByText("Test Label")).toBeInTheDocument();
+
+    // Check radio input is rendered
+    expect(screen.queryByRole("radio")).not.toBeNull();
+  });
+
+  it("should call handleCallback when a radio button is selected", () => {
+    store = mockStore({
+      ...store.getState(),
+      lov: {
+        lov: [
+          {
+            label: "test_field",
+            value: [
+              { CODE_VALUE: "value1", CODE_DESC: "Option 1" },
+              { CODE_VALUE: "value2", CODE_DESC: "Option 2" },
+            ],
+          },
+        ],
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <RadioWithLabel {...props} />
+      </Provider>
+    );
+
+    // Simulate selecting a radio button
+    const radio = screen.getByLabelText("Option 1");
+    fireEvent.click(radio);
+
+    // Check callback is invoked
+    expect(props.handleCallback).toHaveBeenCalledWith(
+      props.data,
+      "value1"
+    );
+  });
+
+  it("should display an error message if validation fails", () => {
+    store = mockStore({
+      ...store.getState(),
+      fielderror: { error: true },
+    });
+
+    render(
+      <Provider store={store}>
+        <RadioWithLabel {...props} />
+      </Provider>
+    );
+
+    // Check for error message
+    expect(
+      screen.getByText("Please select Test Label")
+    ).toBeInTheDocument();
+  });
+
+  it("should open and close the info popup on clicking the tooltip", () => {
+    render(
+      <Provider store={store}>
+        <RadioWithLabel {...props} />
+      </Provider>
+    );
+
+    // Open popup
+    const tooltip = screen.getByClassName("info-tooltip");
+    fireEvent.click(tooltip);
+
+    // Check if popup opens
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Close popup
+    const backButton = screen.getByText("Back");
+    fireEvent.click(backButton);
+
+    // Check if popup closes
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("should handle updates to Redux state and props correctly", () => {
+    // Modify Redux store during the test
+    store = mockStore({
+      ...store.getState(),
+      stages: {
+        ...store.getState().stages,
+        userInput: {
+          applicants: {
+            test_field_a_1: "updated_value",
+          },
+        },
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <RadioWithLabel {...props} />
+      </Provider>
+    );
+
+    // Check updated value is reflected in the component
+    expect(screen.queryByDisplayValue("updated_value")).toBeInTheDocument();
+  });
+});
+
+
+
+
+
+
+
+
 import { useEffect, useState } from "react";
 import "./radio-with-label.scss";
 import { useDispatch, useSelector } from "react-redux";
