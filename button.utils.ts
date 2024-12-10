@@ -1,3 +1,172 @@
+import configureMockStore from "redux-mock-store";
+import thunk from "redux-thunk";
+import { getFields } from "./path-to-getFields-file";
+import { fieldErrorAction } from "../../../utils/store/field-error-slice";
+import { stagesAction } from "../../../utils/store/stages-slice";
+import { taxAction } from "../../../utils/store/tax-slice";
+
+// Mock Redux setup
+const middlewares = [thunk];
+const mockStore = configureMockStore(middlewares);
+
+describe("getFields function", () => {
+    let store: any;
+    beforeEach(() => {
+        store = mockStore({});
+        jest.clearAllMocks();
+    });
+
+    it("should dispatch actions to handle mandatory and optional fields correctly", () => {
+        const mockStages = [
+            {
+                stageId: "ssf-1",
+                stageInfo: {
+                    fieldmetadata: {
+                        data: {
+                            stages: [
+                                {
+                                    fields: [
+                                        { logical_field_name: "country_of_tax_residence" },
+                                        { logical_field_name: "tax_id_no" },
+                                        { logical_field_name: "crs_reason_code" }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ];
+        const mockTaxSelector = {
+            maxCount: 2,
+            count: 1,
+            fields: ["country_1", "tax_1"]
+        };
+        const mockUserInputs = {
+            applicants: {
+                tax_id_no_1_a_1: "12345",
+                crs_reason_code_1_a_1: "",
+                crs_comments_1_a_1: ""
+            }
+        };
+
+        const action = "add";
+        store.dispatch(getFields(mockStages, mockTaxSelector, action, mockUserInputs) as any);
+
+        const actions = store.getActions();
+
+        // Check if the expected actions are dispatched
+        expect(actions).toContainEqual(
+            fieldErrorAction.getMandatoryFields(["tax_id_no", "crs_reason_code"])
+        );
+        expect(actions).toContainEqual(
+            stagesAction.removeAddToggleField({
+                removeFields: [],
+                newFields: ["tax_id_no", "crs_reason_code"],
+                value: ""
+            })
+        );
+    });
+
+    it("should add new fields when taxSelector count is less than maxCount", () => {
+        const mockStages = [
+            {
+                stageId: "ssf-2",
+                stageInfo: {
+                    fieldmetadata: {
+                        data: {
+                            stages: [
+                                {
+                                    fields: [
+                                        { logical_field_name: "country_of_tax_residence" },
+                                        { logical_field_name: "tax_id_no" },
+                                        { logical_field_name: "crs_reason_code" }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ];
+        const mockTaxSelector = {
+            maxCount: 3,
+            count: 1,
+            fields: []
+        };
+        const mockUserInputs = { applicants: {} };
+        const action = "add";
+
+        store.dispatch(getFields(mockStages, mockTaxSelector, action, mockUserInputs) as any);
+
+        const actions = store.getActions();
+
+        expect(actions).toContainEqual(taxAction.updateCount(2));
+        expect(actions).toContainEqual(
+            fieldErrorAction.getMandatoryFields(["country_of_tax_residence_2"])
+        );
+    });
+
+    it("should remove mandatory fields when conditions are met", () => {
+        const mockStages = [
+            {
+                stageId: "ssf-1",
+                stageInfo: {
+                    fieldmetadata: {
+                        data: {
+                            stages: [
+                                {
+                                    fields: [
+                                        { logical_field_name: "country_of_tax_residence" },
+                                        { logical_field_name: "tax_id_no" },
+                                        { logical_field_name: "crs_reason_code" }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ];
+        const mockTaxSelector = {
+            maxCount: 2,
+            count: 1,
+            fields: ["tax_id_no_1", "crs_reason_code_1"]
+        };
+        const mockUserInputs = {
+            applicants: {
+                tax_id_no_1_a_1: "",
+                crs_reason_code_1_a_1: "B00",
+                crs_comments_1_a_1: ""
+            }
+        };
+
+        const action = "update";
+
+        store.dispatch(getFields(mockStages, mockTaxSelector, action, mockUserInputs) as any);
+
+        const actions = store.getActions();
+
+        expect(actions).toContainEqual(
+            fieldErrorAction.removeMandatoryFields(["tax_id_no_1", "crs_comments_1"])
+        );
+    });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { AppDispatch } from "../../../services/common-service";
 import { FindIndex } from "../../../utils/common/change.utils";
 import { KeyWithAnyModel, StageDetails, UserFields,taxStoreModel } from "../../../utils/model/common-model";
