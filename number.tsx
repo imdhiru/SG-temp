@@ -1,3 +1,184 @@
+
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import Number from "./Number";
+import { postalCodeAction } from "../../../utils/store/postal-code";
+
+const mockStore = configureStore([]);
+const mockDispatch = jest.fn();
+
+jest.mock("../../../utils/store/postal-code", () => ({
+  ...jest.requireActual("../../../utils/store/postal-code"),
+  postalCodeValidation: jest.fn(),
+}));
+
+jest.mock("react-redux", () => ({
+  ...jest.requireActual("react-redux"),
+  useDispatch: () => mockDispatch,
+}));
+
+describe("Number Component", () => {
+  let store: any;
+  const props = {
+    data: {
+      logical_field_name: "postal_code",
+      rwb_label_name: "Postal Code",
+      mandatory: "Yes",
+      regex: "\\d{5}",
+      min_length: 5,
+      length: 5,
+      editable: false,
+      type: "text",
+    },
+    handleCallback: jest.fn(),
+    handleFieldDispatch: jest.fn(),
+  };
+
+  beforeEach(() => {
+    store = mockStore({
+      stages: {
+        stages: [
+          {
+            stageId: "ad-1",
+            stageInfo: {
+              application: { channel_reference: "12345" },
+              applicants: {},
+            },
+          },
+        ],
+        userInput: { applicants: {} },
+        updatedStageInputs: [],
+      },
+      fielderror: { error: {} },
+    });
+    mockDispatch.mockClear();
+  });
+
+  test("renders the component with correct props", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+    expect(screen.getByLabelText("Postal Code")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Postal Code")).toHaveAttribute(
+      "maxLength",
+      "5"
+    );
+  });
+
+  test("displays error for empty mandatory field", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByText(/Postal Code is required/)).toBeInTheDocument();
+  });
+
+  test("validates regex pattern", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    fireEvent.change(input, { target: { value: "123" } });
+    expect(
+      screen.getByText(/Invalid format for Postal Code/)
+    ).toBeInTheDocument();
+  });
+
+  test("triggers postal code validation on valid input", async () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    fireEvent.change(input, { target: { value: "12345" } });
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.any(Function) // The postal code validation function
+      );
+    });
+  });
+
+  test("dispatches focus and blur events correctly", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+
+    expect(mockDispatch).toHaveBeenCalledTimes(2); // One for focus and one for blur
+  });
+
+  test("handles valid input without errors", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    fireEvent.change(input, { target: { value: "12345" } });
+    expect(screen.queryByText(/Invalid/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/required/)).not.toBeInTheDocument();
+  });
+
+  test("disables input when editable prop is false", () => {
+    render(
+      <Provider store={store}>
+        <Number {...props} />
+      </Provider>
+    );
+
+    const input = screen.getByPlaceholderText("Postal Code");
+    expect(input).toBeDisabled();
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { KeyWithAnyModel, StoreModel } from "../../../utils/model/common-model";
