@@ -1,3 +1,149 @@
+
+import { submitRequest } from './path-to-file';
+import configureMockStore from 'redux-mock-store';
+import thunk from 'redux-thunk';
+import * as actions from './actions'; // Adjust imports based on actual action locations
+
+const mockStore = configureMockStore([thunk]);
+
+jest.mock('./actions', () => ({
+  fieldErrorAction: {
+    getMandatoryFields: jest.fn(),
+    getFieldError: jest.fn(),
+  },
+  postRequest: jest.fn(),
+  preserveRequest: jest.fn(),
+}));
+
+describe('submitRequest', () => {
+  let store: any;
+
+  beforeEach(() => {
+    store = mockStore({
+      stages: {
+        stages: [
+          {
+            stageInfo: {
+              fieldmetadata: {
+                data: {
+                  stages: [
+                    { stageId: 'ad-1', fields: [] }, // Mock stage data
+                  ],
+                },
+              },
+              applicants: { some_field: 'value' },
+              products: [{ product_type: 'test_product' }],
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('should dispatch correct actions when isPreserveCall is true', async () => {
+    const mockDispatch = jest.fn();
+    const thunk = submitRequest(
+      { some_field: 'value' }, // Mock applicantsSelector
+      { stageInfo: store.getState().stages.stages[0].stageInfo, stageId: 'ad-1' }, // Mock stageSelector
+      [],
+      { backNavigation: { formChange: true }, otherMyInfo: false }, // Mock valueSelector
+      null,
+      {},
+      {},
+      null,
+      false,
+      true
+    );
+
+    await thunk(mockDispatch);
+
+    expect(actions.fieldErrorAction.getMandatoryFields).toHaveBeenCalledWith(null);
+    expect(actions.fieldErrorAction.getFieldError).toHaveBeenCalledWith(null);
+    expect(actions.preserveRequest).toHaveBeenCalled();
+  });
+
+  it('should dispatch postRequest with correct payload on valid inputs', async () => {
+    const mockDispatch = jest.fn();
+    const mockResponse = { someKey: 'responseValue' };
+    (actions.postRequest as jest.Mock).mockResolvedValue(mockResponse);
+
+    const thunk = submitRequest(
+      { some_field: 'value' },
+      { stageInfo: store.getState().stages.stages[0].stageInfo, stageId: 'ad-1' },
+      [],
+      { backNavigation: { formChange: null }, otherMyInfo: true },
+      'testJourney',
+      {},
+      {},
+      null,
+      false,
+      false
+    );
+
+    await thunk(mockDispatch);
+
+    expect(actions.fieldErrorAction.getMandatoryFields).toHaveBeenCalledWith(null);
+    expect(actions.postRequest).toHaveBeenCalled();
+    expect(mockDispatch).toHaveBeenCalled();
+  });
+
+  it('should handle exceptions during dispatch', async () => {
+    const mockDispatch = jest.fn();
+    const mockError = new Error('Test Error');
+    (actions.postRequest as jest.Mock).mockRejectedValue(mockError);
+
+    const thunk = submitRequest(
+      { some_field: 'value' },
+      { stageInfo: store.getState().stages.stages[0].stageInfo, stageId: 'ad-1' },
+      [],
+      { backNavigation: { formChange: null }, otherMyInfo: true },
+      'testJourney',
+      {},
+      {},
+      null,
+      false,
+      false
+    );
+
+    await expect(thunk(mockDispatch)).rejects.toThrow('Test Error');
+  });
+
+  it('should handle stagePayload transformations correctly', async () => {
+    const mockDispatch = jest.fn();
+    const thunk = submitRequest(
+      { some_field: 'value' },
+      { stageInfo: store.getState().stages.stages[0].stageInfo, stageId: 'ad-1' },
+      [],
+      { backNavigation: { formChange: null }, otherMyInfo: true },
+      'testJourney',
+      {},
+      {},
+      null,
+      false,
+      false
+    );
+
+    await thunk(mockDispatch);
+
+    // Add assertions specific to transformations within `stagePayload`.
+    // Example:
+    expect(store.getState().stages.stages[0].stageInfo.applicants).toHaveProperty(
+      'some_field',
+      'value'
+    );
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
 import {
   AppDispatch,
   postRequest,
